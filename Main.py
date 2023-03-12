@@ -12,6 +12,10 @@ if __name__ == "__main__":
     X = {i:Var('X',i) for i in range(0,300)}
     I = Interpretation()
 
+#Example 0 - Not entirely correct set, just not check termination of both chains
+    lterm = f_(lrec(Idx(0)),f_(X[0],X[0]))
+    rterm = f_(f_(Y[0],Y[0]),rrec(Idx(0)))
+
 #Example 1
     # lterm = f_(f_(X[0],X[0]),lrec(Idx(0)))
     # rterm = f_(Y[0],Y[0])
