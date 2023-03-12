@@ -39,13 +39,13 @@ class Solver:
 # remove occurances of variables found during decomposition
             Var.find(term).occ =Var.find(term).occ-1
             vars.append(term)
-        elif type(term) is App and not term.func.Rec:
+        elif type(term) is App:
             terms.append(term)
             syms.add(term.func)
             for x in range(0,term.func.arity): matches[x].append(term.args[x])
-        elif type(term) is App and term.func.Rec:
+        elif type(term) is Rec:
             terms.append(term)
-            syms.add(term.func)
+            syms.add(term)
         return (vars,terms,matches,syms)
 
 # M and M decomposition function
@@ -53,7 +53,7 @@ class Solver:
 # and frontier
     def decompose(self,ts):
         vars,terms,matches,syms =reduce(lambda a,b: Solver.mmeq(a,b) ,ts,([],[],defaultdict(lambda :[]),set()))
-        reccount,sym = reduce(lambda a,b: (a[0]+1,a[1]) if b.Rec else (a[0],b),syms,(0,None))
+        reccount,sym = reduce(lambda a,b: (a[0]+1,a[1]) if type(b) is Rec else (a[0],b),syms,(0,None))
         if len(syms)>1 and reccount == 0:
             raise Solver.ClashExeption(syms,ts)
         elif len(syms)>1 and reccount>0 and len(vars)== 0:
@@ -79,7 +79,7 @@ class Solver:
 #counts occurances of variables
         def varocc(t):
             if type(t) is Var: Var.find(t).occ+=1
-            elif type(t) is App and not t.func.Rec: t.inducApp(varocc)
+            elif type(t) is App: t.inducApp(varocc)
 
 #Builds multiequations based on the input equations
         for x,y in self.eqs.items():
@@ -111,11 +111,11 @@ class Solver:
         steps=0
         def drop_occs(t):
             if type(t) is Var: Var.find(t).occ-=1
-            elif type(t) is App and not t.func.Rec: t.inducApp(drop_occs)
+            elif type(t) is App: t.inducApp(drop_occs)
 
 
         while len(var_reps)>0:
-            if debug: print_current_step(steps,currentprob,tosolve)
+            if debug: self.print_current_step(steps,currentprob,tosolve)
 #Get the next multi-equation with zero occurances
             cur = var_reps.pop()
 #Remove it from the to solve set
@@ -173,7 +173,7 @@ class Solver:
     def clear(self):
         self.eqs = defaultdict(set)
 
-    def print_current_step(steps,currentprob,tosolve):
+    def print_current_step(self,steps,currentprob,tosolve):
         print("Step ",str(steps)," of ",str(currentprob))
         for x in tosolve: print("\t"+x.format())
         print()

@@ -2,64 +2,18 @@ from typing import Set, Tuple, Dict
 from collections import defaultdict
 from functools import reduce
 
-class recterm:
 
-    def __init__(self, term,vclass="X"):
-        self.enum=0
-        self.vclass = vclass
-        self.varsenum = {}
-        self.revvarsenum = {}
-        def initialize(t):
-            if type(t) is Idx:
-                v= Var(self.vclass,t.number)
-                self.varsenum[t.number],self.revvarsenum[v] = v,t.number
-                self.enum = max(t.number,self.enum)+1
-                return t
-            elif type(t) is Var:
-                if not t in self.revvarsenum.keys():
-                    self.varsenum[self.enum],self.revvarsenum[t] = t,self.enum
-                    replace = Idx(self.enum)
-                    self.enum+=1
-                    return replace
-                elif  t in self.revvarsenum.keys():
-                    return Idx(self.revvarsenum[t])
-            elif type(t) is App and not t.func.Rec:
-                    return t.func(*map(lambda a: initialize(a),t.args))
-            elif type(t) is App and t.func.Rec:
-                self.func = t.func
-                return t
-            else:
-                raise Exception
-
-        self.term = initialize(term)
-
-
-
-    def increment(self,idx):
-        return self.increment_help(self.term,idx.number)
-    def increment_help(self,t,num):
-        if type(t) is Idx:
-            if not t.number+num in self.varsenum.keys():
-                self.varsenum[t.number+num] = Var(self.vclass,(t.number+num))
-            return self.varsenum[t.number+num]
-        elif type(t) is App and not t.func.Rec:
-            return t.func(*map(lambda a:  self.increment_help(a,num),t.args))
-        elif type(t) is App and t.func.Rec:
-            return t.func(Idx(num+1))
-        else: raise Exception
 
 class Func:
     """Immutable data type representing a function symbol."""
     name: str
     arity: int
-    Rec:bool
-    def __init__(self, name, arity,rec=False):
+    def __init__(self, name, arity):
         self.name = name
         self.arity = arity
-        self.Rec = rec
-        self.assoc_classes=[]
-    def add_class(self,vclass,gap):
-        self.assoc_classes.append((vclass,gap))
+    #     self.assoc_classes=[]
+    # def add_class(self,vclass,gap):
+    #     self.assoc_classes.append((vclass,gap))
 
     def __eq__(self, other):
         return isinstance(other, __class__) and self.name == other.name and self.arity == other.arity
@@ -72,9 +26,9 @@ class Func:
         return f"{self.name}/{self.arity}"
 
     def __call__(self, *args):
-        if len(args) != self.arity:
-            raise ValueError()
-        return App(self, *args)
+        if len(args) != self.arity: raise ValueError()
+        if len(args) == 1 and type(args[0]) is Idx: return Rec(self, *args)
+        else: return App(self, *args)
 
 
 class Term:
@@ -141,6 +95,13 @@ class Var(Term):
         self.occ = 0
         self.active = active
 
+    def reset(self):
+        self.rep = self
+        self.size =1
+        self.terms = []
+        self.occ = 0
+        self.active = False
+
     def __init__(self, vclass,idx,active = False):
         self.vclass = vclass
         self.idx = idx
@@ -206,3 +167,30 @@ class App(Term):
         args = ("" if not self.args
                 else '(' + ','.join(str(a) for a in self.args) + ')')
         return f"{self.func.name}{args}"
+
+class Rec(Term):
+    class InvalidFunctionException(Exception):
+        def __init__(self,idx):
+            self.idx = idx
+        def handle(self):
+            print()
+            print("Invalid Arugment: ",str(self.idx)+" has type "+type(self.idx)+", should have type Idx.")
+            return None
+
+    def __init__(self, func, idx):
+        assert func.arity == 1
+        self.func = func
+        if not type(idx) is Idx: raise InvalidArgumentException(idx)
+        self.idx = idx
+
+    def __str__(self):
+        return self.func.name+"_"+str(self.idx)
+
+    def __eq__(self, other: "Rec"):
+        return isinstance(other, __class__) and self.func == other.func and self.idx == other.idx
+
+    def __hash__(self):
+        return hash((self.func, self.idx))
+
+    def __repr__(self):
+        return self.func.name+"_"+str(self.idx)

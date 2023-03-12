@@ -1,15 +1,16 @@
 from Solver import *
 
 class LoopUnif:
-    def __init__(self,lterm,l,r,debug=False):
+    def __init__(self,I,debug=False):
         self.debug = debug
-        self.shift = lambda l,r: (l,lterm.increment(r.args[0]) if type(r) is App and r.func.Rec else r)
+        self.shift = lambda l,r: (l,I.increment(r.func.name,r.idx) if type(r) is Rec else r)
         self.solver = Solver()
         self.unifier = {}
         self.count = 0
-        self.lterm = lterm
+        self.I = I
         starter_var = self.solver.freshvar(False)
-        self.subproblems = [[(starter_var,l),(starter_var,r)]]
+        start = Idx(0)
+        self.subproblems = [[(starter_var,x(start)) for x in I.symbols]]
 
     def loop_unif(self):
         while not self.check_finished():
@@ -58,11 +59,11 @@ class LoopUnif:
                     if type(self.unifier[t.vclass][t.idx][1]) is Var and not self.unifier[t.vclass][t.idx][1] in seen:
                         seen.add(self.unifier[t.vclass][t.idx][1])
                         check_for_rel(self.unifier[t.vclass][t.idx][1])
-            elif type(t) is App and not t.func.Rec:
+            elif type(t) is App:
                 for x in t.args: check_for_rel(x)
-            elif type(t) is App and t.func.Rec:
-                cur_idx = t.args[0].number
-                for vx,gx in t.func.assoc_classes:
+            elif type(t) is Rec:
+                cur_idx = t.idx.number
+                for vx,gx in self.I.associated_classes[t.func.name].items():
                     if vx in self.unifier.keys():
                         for j in self.unifier[vx].keys():
                             if j>= cur_idx+gx:
@@ -78,9 +79,9 @@ class LoopUnif:
         if self.subproblems[self.count] == []:
             return True
         else:
-            test = list(filter(lambda a: not a[1].func.Rec if type(a[1]) is App else True, self.subproblems[self.count]))
+            test = list(filter(lambda a: not type(a[1]) is Rec , self.subproblems[self.count]))
             for i in range(0,self.count):
-                check = list(filter(lambda a: not a[1].func.Rec if type(a[1]) is App else True, self.subproblems[i]))
+                check = list(filter(lambda a: not type(a[1]) is Rec, self.subproblems[i]))
                 if len(test) == len(check):
                     result =[]
                     for vt,t in test:
