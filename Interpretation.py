@@ -7,7 +7,7 @@ class Interpretation:
             print()
             print("Invalid Function: ",self.func.name+"/"+(self.func.arity))
             return None
-    class InvalidRecursionError(Exception):
+    class InvalidRecursionException(Exception):
         def __init__(self,w,c):
             self.w =w
             self.c= c
@@ -71,11 +71,11 @@ class Interpretation:
                 newvar = Var(t.vclass,(t.idx+num))
                 self.varsenum[sym][t.vclass][t.idx+num],self.revvarsenum[sym][t.vclass][newvar] = newvar, t.idx+num
                 return newvar
-            else: return self.varsenum[sym][t.vclass][t.idx+num]
+            else: return Var.find(self.varsenum[sym][t.vclass][t.idx+num])
         elif type(t) is App:
             return t.func(*map(lambda a:  self.increment_help(a,sym,num),t.args))
         elif type(t) is Rec:
-            return t.func(Idx(num+1))
+            return t.func(Idx(num+(1 if t.func.name == sym else 0)))
         else: raise Exception
 
     def extractclasses(self,sym,term):
@@ -86,6 +86,6 @@ class Interpretation:
                 self.associated_classes[sym][term.vclass] = min(term.idx,self.associated_classes[sym][term.vclass])
         elif type(term) is App:
             term.inducApp(lambda a:self.extractclasses(sym,a))
-        elif type(term) is Rec:
-            if term.func.name != sym:
-                raise InvalidRecursionError(term.func.name,sym)
+        # elif type(term) is Rec:
+        #     if term.func.name != sym:
+        #         raise self.InvalidRecursionException(term.func.name,sym)

@@ -11,9 +11,6 @@ class Func:
     def __init__(self, name, arity):
         self.name = name
         self.arity = arity
-    #     self.assoc_classes=[]
-    # def add_class(self,vclass,gap):
-    #     self.assoc_classes.append((vclass,gap))
 
     def __eq__(self, other):
         return isinstance(other, __class__) and self.name == other.name and self.arity == other.arity
@@ -49,7 +46,8 @@ class Term:
             if not varpairs: return False
             check = {}
             for x,y in varpairs:
-                if x in check.keys() and check[x] != y: return False
+                if type(x) is Rec: continue
+                elif x in check.keys() and check[x] != y: return False
                 elif x.vclass != y.vclass: return False
                 check[x] = y
             return True
@@ -66,7 +64,9 @@ class Term:
                 if not res: return None
                 ret.extend(res)
             return ret
-        else: raise Exception
+# the idx of s should be larger
+        elif type(s) is Rec  and s.func == t.func: return [(s,t)]
+        else: return None
     pass
 
 class Var(Term):
@@ -111,6 +111,7 @@ class Var(Term):
         self.terms = []
         self.occ = 0
         self.active=active
+        
     def format(self):
         return str(self.occ)+":{" +self.__str__()+"}"+" =?= "+"{{"+','.join([str(t) for t in self.terms])+"}}"
     def __eq__(self, other):
