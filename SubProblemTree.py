@@ -34,7 +34,10 @@ class SubProblemTree:
         self.openbranches.append(nb)
         self.counter+=1
 
+#TODO Needs backtrackng to be fully correct
     def closeBranch(self):
+        def consistent(fa,pa):
+            return  reduce(lambda a,b: a and (fa[b]==pa[b] if b in pa.keys() else True),fa.keys(),True)
         test = list(self.cur.subproblem)
         previousprob = self.cur.parent
         closed = iter(self.closedbranches)
@@ -42,11 +45,15 @@ class SubProblemTree:
             check = list(previousprob.subproblem)
             if len(test) == len(check):
                 result =[]
+                fullalpha = {}
                 for vt,t in test:
                     found = None
                     for vs,s in check:
-                        if t.isalpha(s):
+                        partalpha = t.isalpha(s)
+                        if partalpha != None and consistent(fullalpha,partalpha):
                             found = (vs,s)
+                            for x in partalpha.keys():
+                                fullalpha[x] = partalpha[x]
                             break
                     if found:
                         result.append(((vt,t),found))

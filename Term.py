@@ -16,7 +16,6 @@ class Func:
         return isinstance(other, __class__) and self.name == other.name and self.arity == other.arity
 
     def __hash__(self):
-        #TODO: can be cached
         return hash((self.name, self.arity))
 
     def __repr__(self):
@@ -43,14 +42,14 @@ class Term:
             False
     def isalpha(self,t):
             varpairs = Term.isalphahelper(self,t)
-            if not varpairs: return False
+            if not varpairs: return None
             check = {}
             for x,y in varpairs:
                 if type(x) is Rec: continue
-                elif x in check.keys() and check[x] != y: return False
-                elif x.vclass != y.vclass: return False
+                elif x in check.keys() and check[x] != y: return None
+                elif x.vclass() != y.vclass(): return None
                 check[x] = y
-            return True
+            return check
 
     def isalphahelper(s,t):
         if type(s) != type(t): return None
@@ -64,7 +63,7 @@ class Term:
                 if not res: return None
                 ret.extend(res)
             return ret
-# the idx of s should be larger
+# TODO the idx of s should be larger than the idx of t
         elif type(s) is Rec  and s.func == t.func: return [(s,t)]
         else: return None
     pass
@@ -81,6 +80,9 @@ class Var(Term):
              x.size, x.occ = x.size+y.size,x.occ+y.occ
 #moves the right side of the multiequation to the representative
              x.terms.extend(y.terms)
+             for c in y.maxsub.keys():
+                 if not c in x.maxsub.keys(): x.maxsub[c]=0
+                 x.maxsub[c] = max(x.maxsub[c],y.maxsub[c])
 #Resets the non-rep
              y.rep,y.terms, y.occ =x,[],0
          return x
@@ -102,8 +104,21 @@ class Var(Term):
         self.occ = 0
         self.active = False
 
-    def __init__(self, vclass,idx,active = False):
-        self.vclass = vclass
+    def vclass(self):
+        return Var.find(self).vc
+    def id(self):
+        return Var.find(self).idx
+    def ts(self):
+        return Var.find(self).terms
+    def occs(self):
+        return Var.find(self).occ
+    def setocc(self,i):
+        Var.find(self).occ = Var.find(self).occ+i
+    def act(self):
+        return Var.find(self).active
+
+    def __init__(self, vc,idx,active = False):
+        self.vc = vc
         self.idx = idx
         # for union-find
         self.rep = self
@@ -111,21 +126,26 @@ class Var(Term):
         self.terms = []
         self.occ = 0
         self.active=active
-        
+#We need to remember the largest subordinate class.
+        self.maxsub = {}
+        self.maxsub[vc]= idx
+
     def format(self):
-        return str(self.occ)+":{" +self.__str__()+"}"+" =?= "+"{{"+','.join([str(t) for t in self.terms])+"}}"
+        return str(self.occ)+":{" +self.__str__()+"}"+" =?= "+"{{"+','.join([str(t) for t in self.ts()])+"}}"
+
     def __eq__(self, other):
-        return isinstance(other, __class__) and self.vclass == other.vclass  and self.idx == other.idx
+        return isinstance(other, __class__) and self.vc == other.vc  and self.idx == other.idx
 
     def __hash__(self):
-        #TODO: can be cached
-        return hash((self.vclass,self.idx))
+        return hash((self.vc,self.idx))
 
     def __str__(self):
-        return f"{Var.find(self).vclass}"+f"{Var.find(self).idx}"
+        c = self.vclass()
+        i = self.id()
+        return f"{c}"+f"{i}"
 
     def __repr__(self):
-        return f"{self.vclass}"+f"{self.idx}"
+        return f"{self.vc}"+f"{self.idx}"
 
 class Idx(Term):
     def __init__(self,idx):
@@ -161,7 +181,6 @@ class App(Term):
         return isinstance(other, __class__) and self.func == other.func and self.args == other.args
 
     def __hash__(self):
-        #TODO: can be cached
         return hash((self.func, self.args))
 
     def __repr__(self):

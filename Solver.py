@@ -7,26 +7,33 @@ class Solver:
         def __init__(self,t1,t2):
             self.lterm = t1
             self.rterm = t2
-        def handle(self):
+        def handle(self,debug):
             print()
             print("symbol clash: ",self.lterm,set(self.rterm))
             print("solved set: ",solved)
+            print()
+
             return None
         pass
     class CycleException(Exception):
-        def __init__(self,prob):
+        def __init__(self,prob,addendum=""):
             self.ununified = prob
-        def handle(self):
-            print("Cycle Detected:")
-            for x in self.ununified:
-                print("\t"+x.format())
+            self.addendum=addendum
+        def handle(self,debug):
+            if debug >0:
+                if self.addendum=="":print("Cycle Detected:")
+                else:  print("Cycle Detected ("+self.addendum+"):")
+                for x in self.ununified:
+                    print("\t"+x.format())
+                print()
+            else: print("\t not unifiable")
             return None
         pass
 
-    def __init__(self):
-        self.eqs = defaultdict( set)
+    def __init__(self,I):
+        self.eqs = defaultdict(set)
         self.starc=-1
-
+        self.I = I
 #Fresh variables are needed when introducing equations to solved
     def freshvar(self,active):
         self.starc+=1
@@ -37,8 +44,8 @@ class Solver:
         vars,terms,matches,syms = mm
         if type(term) is Var:
 # remove occurances of variables found during decomposition
-            Var.find(term).occ =Var.find(term).occ-1
-            vars.append(term)
+            term.setocc(-1)
+            vars.append(Var.find(term))
         elif type(term) is App:
             terms.append(term)
             syms.add(term.func)
@@ -48,24 +55,32 @@ class Solver:
             syms.add(term)
         return (vars,terms,matches,syms)
 
+    def futureoccurs(self,c,recs):
+        for r in recs:
+            for c1, gap in  self.I.associated_classes[r.func.name].items():
+                if c1 in c.maxsub.keys() and c.maxsub[c1]>=gap+r.idx.number:
+                    return r
+        return None
 # M and M decomposition function
 # decomposes the terms and builds the common part
 # and frontier
-    def decompose(self,ts):
+    def decompose(self,cur,ts):
         vars,terms,matches,syms =reduce(lambda a,b: Solver.mmeq(a,b) ,ts,([],[],defaultdict(lambda :[]),set()))
-        reccount,sym = reduce(lambda a,b: (a[0]+1,a[1]) if type(b) is Rec else (a[0],b),syms,(0,None))
-        if len(syms)>1 and reccount == 0:
+        recs,sym = reduce(lambda a,b: (a[0]+[b],a[1]) if type(b) is Rec else (a[0],b),syms,([],None))
+        if len(syms)>1 and len(recs)==0:
             raise Solver.ClashExeption(syms,ts)
-        elif len(syms)>1 and reccount>0 and len(vars)== 0:
+        elif len(syms)>1 and len(recs)>0 and len(vars)== 0:
+            violation = self.futureoccurs(cur,recs)
+            if violation: raise Solver.CycleException([cur],addendum= str(cur) +" occurs in "+str(violation))
             starvar = self.freshvar(True)
             return (starvar,[([starvar],terms)])
-        elif len(syms)==1 and reccount>0 and len(vars)== 0:
+        elif len(syms)==1 and len(recs)>0 and len(vars)== 0:
             return (terms[0],[])
         if len(vars)>0:
             return (reduce(lambda a,b:  Var.union(a,b),vars),[(set(vars),terms)])
         else:
             args,front=[None]*sym.arity,[]
-            for x,y,z in map(lambda a: (a[0],*self.decompose(a[1])),matches.items()):
+            for x,y,z in map(lambda a: (a[0],*self.decompose(cur,a[1])),matches.items()):
                 args[x]=Var.find(y)
                 front.extend(z)
             return (sym(*args),front)
@@ -78,7 +93,7 @@ class Solver:
              return a
 #counts occurances of variables
         def varocc(t):
-            if type(t) is Var: Var.find(t).occ+=1
+            if type(t) is Var: t.setocc(1)
             elif type(t) is App: t.inducApp(varocc)
 
 #Builds multiequations based on the input equations
@@ -87,56 +102,55 @@ class Solver:
             if type(x) is Var:
                 repvar = reduce(lambda a,b: Var.union(a,b),vars,Var.find(x))
                 for t in terms: varocc(t)
-                repvar.terms.extend(terms)
+                repvar.ts().extend(terms)
                 var_reps.add(repvar)
             else:
                 for v in vars:
-                    repvar = Var.find(v)
                     varocc(x)
-                    repvar.terms.append(x)
-                    var_reps.add(repvar)
+                    v.ts().append(x)
+                    var_reps.add(Var.find(v))
                 for t in terms:
                     repvar = self.freshvar()
                     varocc(x)
                     varocc(t)
-                    repvar.terms.extend([t,x])
+                    repvar.ts().extend([t,x])
                     var_reps.add(repvar)
         var_reps= set([Var.find(x) for x in var_reps])
-        return var_reps,set(filter(lambda a: Var.find(a).occ==0,var_reps))
+        return var_reps,set(filter(lambda a: a.occs()==0,var_reps))
 
-    def unify(self,currentprob,debug=False):
+    def unify(self,currentprob,debug=0,I=None):
         tosolve,var_reps = self.preprocess()
         solved =set()
         subproblems=[]
         steps=0
         def drop_occs(t):
-            if type(t) is Var: Var.find(t).occ-=1
+            if type(t) is Var: t.setocc(-1)
             elif type(t) is App: t.inducApp(drop_occs)
 
 
         while len(var_reps)>0:
-            if debug: self.print_current_step(steps,currentprob,tosolve)
+            if debug==3: self.print_current_step(steps,currentprob,tosolve)
 #Get the next multi-equation with zero occurances
             cur = var_reps.pop()
 #Remove it from the to solve set
             tosolve.remove(cur)
 
-            if cur.vclass[0]=='*' and cur.active:
-                for t in cur.terms: drop_occs(t)
+            if cur.vclass()[0]=='*' and cur.act():
+                for t in cur.ts(): drop_occs(t)
                 subproblems.append(cur)
                 for x in tosolve:
-                    if x.occ ==0:
+                    if x.occs() ==0:
                         var_reps.add(x)
                 steps+=1
                 continue
 #check if there are terms on the right side of the multiequation
-            if cur.terms!= []:
+            if cur.ts()!= []:
                 try:
 #decompose the terms on the right side of the multiequation to get
 #the common part and frontier
-                    common,front = self.decompose(cur.terms)
+                    common,front = self.decompose(cur,cur.ts())
                 except Solver.ClashExeption as e: pass
-                if debug:
+                if debug==3:
                     print("common: \n\t"+str(common))
                     print()
                     print("frontier: ")
@@ -148,17 +162,17 @@ class Solver:
                 solved.add((cur,common))
                 for fvar,fterms in front:
                     vrep = Var.find(list(fvar)[0])
-                    if debug: print("\t"+str(vrep.occ)+":{"+','.join([str(x)for x in fvar])+"}"+" =?= "+"{{"+','.join([str(x)for x in fterms])+"}}" )
-                    vrep.terms.extend(fterms)
-                    if vrep.occ == 0: var_reps.add(vrep)
+                    if debug==3: print("\t"+str(vrep.occs())+":{"+','.join([repr(x)for x in fvar])+"}"+" =?= "+"{{"+','.join([str(x)for x in fterms])+"}}" )
+                    vrep.ts().extend(fterms)
+                    if vrep.occs() == 0: var_reps.add(vrep)
                     tosolve.add(vrep)
                     solved.update([(v,vrep) for v in fvar if  v != vrep])
                 tosolve =set([Var.find(x) for x in tosolve])
-                if debug:
+                if debug==3:
                     print()
                     print("==========================================================")
             else:
-                if debug:
+                if debug==3:
                     print("==========================================================")
             steps+=1
 #If var_reps is empty and tosolve is not then we have a cycle
