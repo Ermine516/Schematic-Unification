@@ -37,12 +37,8 @@ class LoopUnif:
         if self.debug==3: self.print_unif_results(sol)
         for x,y in sol.items():
             if not x.vc in self.unifier.keys(): self.unifier[x.vc] = {}
-# TODO if we are going to handle nested terms we to unif here not just erase
-# Also the case if we are going to handle non-linear variable class usage
-
-# TODO another problem, a variable for which we know it's unifier may be updated.
-# To deal with this we need to check for such updates. Probably another source
-# of non-deterministic behavior, especially in the non-shallow case.
+# TODO if we are going to handle nested terms the unifier cannot just erase
+#Same holds for non-linear variable class usage
             self.unifier[x.vc][x.idx]=(x,y)
             x.clean(False)
 

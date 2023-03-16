@@ -63,8 +63,7 @@ class Term:
                 if not res: return None
                 ret.extend(res)
             return ret
-# TODO the idx of s should be larger than the idx of t
-        elif type(s) is Rec  and s.func == t.func: return [(s,t)]
+        elif type(s) is Rec  and s.func == t.func and s.idx.number >=t.idx.number: return [(s,t)]
         else: return None
     pass
 

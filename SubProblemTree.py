@@ -45,15 +45,21 @@ class SubProblemTree:
             check = list(previousprob.subproblem)
             if len(test) == len(check):
                 result =[]
-                fullalpha = {}
+                leftalpha = {}
+                rightalpha = {}
                 for vt,t in test:
                     found = None
-                    for vs,s in check:
+                    curmap = leftalpha[vt] if vt in leftalpha.keys() else None
+                    if not curmap and vt in rightalpha.keys():
+                        curmap =  rightalpha[vt]
+                        leftalpha[vt] = curmap
+                    checkfiltered = filter(lambda a: a[0]==curmap,check) if curmap else check
+                    for vs,s in checkfiltered:
                         partalpha = t.isalpha(s)
-                        if partalpha != None and consistent(fullalpha,partalpha):
+                        if partalpha != None and consistent(rightalpha,partalpha):
                             found = (vs,s)
                             for x in partalpha.keys():
-                                fullalpha[x] = partalpha[x]
+                                rightalpha[x] = partalpha[x]
                             break
                     if found:
                         result.append(((vt,t),found))
