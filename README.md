@@ -75,6 +75,7 @@ Recursion Found 7 => 2 :
 	(*7, L_7) => (*2, L_2)
 
 Computed Bindings:
+
 	Y0 <= *2
 	
 	Y1 <= f(X2,f(Z1,f(X2,f(X1,f(Z2,X1)))))
