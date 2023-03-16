@@ -2,6 +2,8 @@ from sys import argv
 from LoopUnif import *
 from Interpretation import *
 from functools import reduce
+from TermParser import *
+
 def build(I,t,i):
     if i == 0: return t
     else:
@@ -80,7 +82,7 @@ def test1():
     for x in X.values(): x.reset()
     for y in Y.values(): y.reset()
 
-    print("Test 5 (should be not unifiable)")
+    print("Test 4 (should be not unifiable)")
     sub =f_(X[1],f_(X[0],f_(X[1],f_(X[0],f_(X[1],X[0])))))
     lterm  = f_(sub,lrec(Idx(0)))
     rterm  = f_(Y[0],f_(Y[1],Y[0]))
@@ -93,7 +95,7 @@ def test1():
     for y in Y.values(): y.reset()
 
 
-    print("Test 6 (should be not unifiable)")
+    print("Test 5 (should be not unifiable)")
     sub =f_(X[0],f_(X[5],f_(X[30],f_(X[0],f_(X[5],X[30])))))
     lterm = f_(sub,lrec(Idx(0)))
     rterm =f_(Y[0],f_(Y[1],f_(Y[2],f_(Y[0],f_(Y[1],Y[2])))))
@@ -106,7 +108,7 @@ def test1():
     for y in Y.values(): y.reset()
 
 
-    print("Test 7 (should be not unifiable)")
+    print("Test 6 (should be not unifiable)")
     sub =f_(X[0],f_(X[10],f_(X[95],f_(X[0],f_(X[10],X[95])))))
     lterm = f_(sub,lrec(Idx(0)))
     rterm =f_(Y[0],f_(Y[1],f_(Y[2],f_(Y[0],f_(Y[1],Y[2])))))
@@ -118,7 +120,7 @@ def test1():
     for x in X.values(): x.reset()
     for y in Y.values(): y.reset()
 
-    print("Test 8 (should be unifiable)")
+    print("Test 7 (should be unifiable)")
     sub =f_(X[1],f_(Z[0],f_(X[1],f_(X[0],f_(Z[1],X[0])))))
     lterm  = f_(sub,lrec(Idx(0)))
     rterm  = f_(Y[0],f_(Y[1],Y[0]))
@@ -131,7 +133,7 @@ def test1():
     for y in Y.values(): y.reset()
     for z in Z.values(): z.reset()
 
-    print("Test 9 (should be unifiable)")
+    print("Test 8 (should be unifiable)")
     sub =f_(X[1],f_(Z[1],f_(X[0],f_(X[0],f_(Z[0],X[1])))))
     lterm  = f_(sub,lrec(Idx(0)))
     rterm  = f_(rrec(Idx(0)),f_(Y[1],f_(Y[2],f_(Y[0],f_(Y[1],Y[2])))))
@@ -144,7 +146,7 @@ def test1():
     for y in Y.values(): y.reset()
     for z in Z.values(): z.reset()
 
-    print("Test 10 (should be not unifiable)")
+    print("Test 9 (should be not unifiable)")
     sub =f_(X[0],f_(X[11],f_(X[6],f_(X[0],f_(X[11],X[6])))))
     lterm = f_(sub,lrec(Idx(0)))
     rterm =f_(Y[0],f_(Y[1],f_(Y[2],f_(Y[0],f_(Y[3],Y[2])))))
@@ -156,7 +158,7 @@ def test1():
     for x in X.values(): x.reset()
     for y in Y.values(): y.reset()
 
-    print("Test 11 (should be not unifiable)")
+    print("Test 10 (should be not unifiable)")
     sub =f_(X[0],f_(X[0],f_(X[0],f_(X[0],f_(X[1],X[1])))))
     lterm = f_(sub,lrec(Idx(0)))
     rterm = f_(f_(Y[2],Y[0]),f_(Y[1],Y[0]))
@@ -168,7 +170,7 @@ def test1():
     for x in X.values(): x.reset()
     for y in Y.values(): y.reset()
 
-    print("Test 12 (should be unifiable)")
+    print("Test 11 (should be unifiable)")
     sub =f_(X[1],f_(X[1],f_(X[1],f_(X[1],f_(X[1],X[1])))))
     lterm = f_(sub,lrec(Idx(0)))
     rterm = f_(f_(Y[2],Y[0]),f_(Y[1],Y[0]))
@@ -222,5 +224,13 @@ def test4():
 
 
 if __name__ == "__main__":
-    debug = True if len(argv)==2 and argv[1] == "debug" else False
-    test1()
+    assert(len(argv)>=2)
+    debug = int(argv[3]) if len(argv)==4 and argv[2] == "debug" else 0
+    assert(4>=debug and debug>=0)
+    tp =TermParser()
+    I = Interpretation()
+    with open(argv[1]) as f:
+        unif, mappings= tp.parse_input(f.readlines())
+        for m in mappings:I.add_mapping(*m)
+        lu = LoopUnif(I,debug,unif)
+        lu.loop_unif()
