@@ -25,6 +25,11 @@ class LoopUnif:
             self.update_subproblems(subp)
             self.update()
         if self.debug >1: self.print_final_results()
+        # for cb in self.subproblems.closedbranches:
+        #     l,r = self.unifier["*"][cb.cyclicIdx]
+        #     expanded = r.apply_unif_vc(l,Var("*",cb.idx),self.unifier)
+        #     print(str(l)+" <== "+str(expanded))
+
         print("\t unifiable")
     def current(self):
         return self.subproblems.current()

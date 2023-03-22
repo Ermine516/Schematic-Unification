@@ -10,7 +10,7 @@ class Solver:
         def handle(self,debug):
             print()
             print("symbol clash: ",self.lterm,set(self.rterm))
-            print("solved set: ",solved)
+            #print("solved set: ",solved)
             print()
 
             return None
@@ -145,11 +145,9 @@ class Solver:
                 continue
 #check if there are terms on the right side of the multiequation
             if cur.ts()!= []:
-                try:
 #decompose the terms on the right side of the multiequation to get
 #the common part and frontier
-                    common,front = self.decompose(cur,cur.ts())
-                except Solver.ClashExeption as e: pass
+                common,front = self.decompose(cur,cur.ts())
                 if debug==3:
                     print("common: \n\t"+str(common))
                     print()

@@ -34,7 +34,7 @@ class TermParser:
     def make_const(self,s,loc,toks):
         if not toks[0] in self.symbols.keys(): self.symbols[toks[0]] = App
         elif self.symbols[toks[0]] != App: raise Exception
-        if not toks[0] in self.found_symbols.keys():found_symbols[toks[0]] = Func(toks[0],0)
+        if not toks[0] in self.found_symbols.keys():self.found_symbols[toks[0]] = Func(toks[0],0)
         elif self.found_symbols[toks[0]].arity!=0: raise Exception
         return self.found_symbols[toks[0]]()
 

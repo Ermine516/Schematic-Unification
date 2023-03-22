@@ -33,6 +33,29 @@ class Term:
         ret =[]
         for x in self.args: ret.append(f(x))
         return ret
+    def containsVar(self,v):
+            if type(self) is Var and self==v: return True
+            elif type(self) is App: return reduce(lambda a,b: a or b.containsVar(v),self.args,False)
+            return False
+    def apply_unif(self,unif):
+            if type(self) is Var:
+                if self.vc in unif.keys() and self.idx in unif[self.vc].keys():
+                    l,r = unif[self.vc][self.idx]
+                    return r.apply_unif(unif)
+                else: return self
+            elif type(self) is App: return self.func(*map(lambda a: a.apply_unif(unif),self.args))
+            elif type(self) is Rec: return self
+    def apply_unif_vc(self,rVar,cVar,unif):
+            if type(self) is Var and self.vc==rVar.vc:
+                l,r = unif[rVar.vc][self.idx]
+                return r.apply_unif_vc(rVar,cVar,unif)
+            elif type(self) is Var and self.vc!=rVar.vc:
+                if self.vc in unif.keys() and self.idx in unif[self.vc].keys() and unif[self.vc][self.idx][1].containsVar(cVar):
+                    return unif[self.vc][self.idx][1].apply_unif({cVar.vc:{cVar.idx:(cVar,rVar)}})
+                else: return self
+            elif type(self) is App: return self.func(*map(lambda a: a.apply_unif_vc(rVar,cVar,unif),self.args))
+            elif type(self) is Rec: return self
+
     def occurs(self,t):
         if self == t:
             return True
