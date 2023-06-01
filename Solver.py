@@ -93,11 +93,14 @@ class Solver:
              return a
 #counts occurances of variables
         def varocc(t):
-            if type(t) is Var: t.setocc(1)
+            if type(t) is Var:
+                Var.find(t).setocc(1)
             elif type(t) is App: t.inducApp(varocc)
 
 #Builds multiequations based on the input equations
+        temp = []
         for x,y in self.eqs.items():
+            temp.append(x)
             vars, terms = reduce(sortbytype,y,(set(),set()))
             if type(x) is Var:
                 repvar = reduce(lambda a,b: Var.union(a,b),vars,Var.find(x))
@@ -115,7 +118,6 @@ class Solver:
                     varocc(t)
                     repvar.ts().extend([t,x])
                     var_reps.add(repvar)
-        var_reps= set([Var.find(x) for x in var_reps])
         return var_reps,set(filter(lambda a: a.occs()==0,var_reps))
 
     def unify(self,currentprob,debug=0,I=None):

@@ -153,7 +153,7 @@ class Var(Term):
         self.maxsub[vc]= idx
 
     def format(self):
-        return str(self.occ)+":{" +self.__str__()+"}"+" =?= "+"{{"+','.join([str(t) for t in self.ts()])+"}}"
+        return str(Var.find(self).occ)+":{" +self.__str__()+"}"+" =?= "+"{{"+','.join([str(t) for t in self.ts()])+"}}"
 
     def __eq__(self, other):
         return isinstance(other, __class__) and self.vc == other.vc  and self.idx == other.idx

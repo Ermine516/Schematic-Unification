@@ -41,7 +41,17 @@ class Interpretation:
         self.varsenum ={}
         self.revvarsenum ={}
         self.nesting = nesting
-
+    def add_relevent_vars(self,terms):
+        for x,y in self.varsenum.items():
+            for t in terms:
+                self.add_relevent_vars_helper(x,t)
+    def add_relevent_vars_helper(self,rec,term):
+        if  type(term)  is Var:
+            if term.vc in self.varsenum[rec].keys():
+                self.varsenum[rec][term.vc][term.idx],self.revvarsenum[rec][term.vc][term] = term, term.idx
+        elif type(term) is App:
+            for t in term.args:
+                self.add_relevent_vars_helper(rec,t)
     def add_mapping(self,sym,term):
         if sym.arity != 1: raise InvalidFunctionException(sym)
         try:

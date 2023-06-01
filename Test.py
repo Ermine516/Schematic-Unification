@@ -19,15 +19,27 @@ class Test:
                 for m in mappings:I.add_mapping(*m)
                 lu = LoopUnif(I,0,unif)
                 lu.loop_unif()
-    def build(I,t,i):
-        if i == 0: return t
-        else:
-            if type(t) is Var:
-                return t
-            elif type(t) is App:
-                return t.func(*reduce(lambda a,b: a+[build(I,b,i)],t.args,[]))
-            elif type(t) is Rec:
-                return build(I,I.increment(t.func.name,t.idx),i-1)
+
+    def testExampleSize(file,i,debug):
+        def build(I,t,i):
+            if i == 0: return t
+            else:
+                if type(t) is Var:
+                    return t
+                elif type(t) is App:
+                    return t.func(*reduce(lambda a,b: a+[build(I,b,i)],t.args,[]))
+                elif type(t) is Rec:
+                    return build(I,I.increment(t.func.name,t.idx),i-1)
+        tp =TermParser()
+        I = Interpretation()
+        with open(file) as f:
+            unif, mappings= tp.parse_input(f.readlines())
+            for m in mappings:I.add_mapping(*m)
+            unif = [build(I,t,i) for t in unif]
+            I.add_relevent_vars(unif)
+            lu = LoopUnif(I,debug,unif)
+            lu.loop_unif()
+
     def test2():
         f_ = Func('f', 2)
         rrec= Func("R",1)
