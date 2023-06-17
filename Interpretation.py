@@ -100,7 +100,7 @@ class Interpretation:
         elif type(t) is App:
             return t.func(*map(lambda a:  self.increment_help(a,sym,num),t.args))
         elif type(t) is Rec:
-            return t.func(Idx(num+(1 if t.func.name == sym else 0)))
+            return t.func(Idx(num+(t.idx.number if t.func.name == sym else 0)))
         else: raise Exception
 
     def extractclasses(self,sym,term):
