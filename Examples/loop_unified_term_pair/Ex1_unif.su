@@ -1,8 +1,13 @@
-##Partially solved need to extract the rest of the unifier.
+##This is the term derived from the output given be EX1.su
+##Essentially this is the term resulting from applying the unifier
+##to both sides. One can chose the left representation or the right
+##one. 
 
-f(f(X[1],f(Z[0],f(X[1],f(X[0],f(Z[1],X[0]))))),f(f(X[2],f(Z[1],f(X[2],f(X[1],f(Z[2],X[1]))))),L_0)) =?= f(Y[0],f(Y[1],Y[0]))
-L <== f(f(X[3],f(Z[2],f(X[3],f(X[2],f(Z[3],X[2]))))),f(f(X[4],f(Z[3],f(X[4],f(X[3],f(Z[4],X[3]))))),f(f(X[5],f(Z[4],f(X[5],f(X[4],f(Z[5],X[4]))))),f(f(X[6],f(Z[5],f(X[6],f(X[5],f(Z[6],X[5]))))),f(f(X[7],f(Z[6],f(X[7],f(X[6],f(Z[7],X[6]))))),L_5)))))
-
-##f(f(X[1],f(Z[0],f(X[1],f(L_5,f(Z[1],L_5))))),f(f(X[2],f(Z[1],f(X[2],f(X[1],f(Z[2],X[1]))))),L_0)) =?= f(Y[0],f(Y[1],Y[0]))
-##L <== f(f(W_5,f(Z[2],f(W_5,f(X[2],f(Z[3],X[2]))))),f(f(X[4],f(Z[3],f(X[4],f(W_5,f(Z[4],W_5))))),f(f(W_5,f(Z[4],f(W_5,f(X[4],f(Z[5],X[4]))))),f(f(X[6],f(Z[5],f(X[6],f(W_5,f(Z[6],W_5))))),f(f(X[7],f(Z[6],f(X[7],f(X[6],f(Z[7],X[6]))))),L_5)))))
-##W <== L_5
+f(f(S_0,f(K_0,f(S_0,f(L_5,f(M_0,L_5))))),f(f(W_4,f(M_0,f(W_4,f(S_0,f(Q_4,S_0))))),L_0)) =?= f(L_0,f(N_0,L_0))
+L <== f(f(L_10,f(Q_4,f(L_10,f(W_4,f(K_5,W_4))))),f(f(W_4,f(K_5,f(W_4,f(L_10,f(Q_4,L_10))))),f(f(L_10,f(Q_4,f(L_10,f(W_4,f(K_5,W_4))))),f(f(S_5,f(K_5,f(S_5,f(L_10,f(M_5,L_10))))),f(f(X[7],f(M_5,f(X[7],f(S_5,f(Z[7],S_5))))),L_5)))))
+W <== X[4]
+Q <== Z[4]
+S <== f(L_10,f(Q_4,f(L_10,f(W_4,f(K_5,W_4)))))
+K <== f(W_4,f(K_5,f(W_4,f(L_10,f(Q_4,L_10)))))
+M <== f(X[7],f(M_5,f(X[7],f(S_5,f(Z[7],S_5)))))
+N <== f(W_4,f(M_0,f(W_4,f(S_0,f(Q_4,S_0)))))

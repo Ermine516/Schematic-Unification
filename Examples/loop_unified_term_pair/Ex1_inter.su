@@ -1,0 +1,6 @@
+## This is the intermidiate form of Ex1.su
+## We unrolled and made a new interpretation which loops
+## immediately. The next step is found in Ex1_unif.su
+
+f(f(X[1],f(Z[0],f(X[1],f(X[0],f(Z[1],X[0]))))),f(f(X[2],f(Z[1],f(X[2],f(X[1],f(Z[2],X[1]))))),L_0))=?= f(Y[0],f(Y[1],Y[0]))
+L <== f(f(X[3],f(Z[2],f(X[3],f(X[2],f(Z[3],X[2]))))),f(f(X[4],f(Z[3],f(X[4],f(X[3],f(Z[4],X[3]))))),f(f(X[5],f(Z[4],f(X[5],f(X[4],f(Z[5],X[4]))))),f(f(X[6],f(Z[5],f(X[6],f(X[5],f(Z[6],X[5]))))),f(f(X[7],f(Z[6],f(X[7],f(X[6],f(Z[7],X[6]))))),L_5)))))

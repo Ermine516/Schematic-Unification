@@ -65,8 +65,8 @@ class Interpretation:
         class_groups = list(map(lambda a: (a,set(self.associated_classes[a].keys())),self.associated_classes.keys()))
         while len(class_groups)!= 0:
             vclass,cur = class_groups.pop()
-            for x,y in  class_groups:
-                if len(cur.intersection(y))!= 0: raise ClassOverlapException(vclass,x,self.mappings)
+            # for x,y in  class_groups:
+            #     if len(cur.intersection(y))!= 0: raise ClassOverlapException(vclass,x,self.mappings)
         self.mappings[sym.name] = term
 
         self.varsenum[sym.name] = {x:{} for x in self.associated_classes[sym.name] }
