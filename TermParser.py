@@ -55,8 +55,10 @@ class TermParser:
         unif = None
         mappings =[]
         for l in input:
-            if "=?=" in l:
+            if  "##" != l[0:2] and "=?=" in l:
                 unif = list(self.unification_problem.parseString(l))
-            else:
+            elif "##" != l[0:2] and "<==" in l:
                 mappings.append(tuple(self.mapping_problem.parseString(l)))
+            else:
+                continue
         return (unif,mappings)

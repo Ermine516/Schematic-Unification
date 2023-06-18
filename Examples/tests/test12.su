@@ -1,2 +1,4 @@
+## Another example unifiable using the
+## augmented Martelli-montanari procedure
 f(X[4],L_0) =?= f(f(Y[3],Y[3]),f(Y[0],f(Y[1],Y[0])))
 L <== f(f(X[1],f(Z[0],f(X[1],f(X[0],f(Z[1],X[0]))))),L_1)

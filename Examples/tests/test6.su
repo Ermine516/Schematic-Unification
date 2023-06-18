@@ -1,2 +1,5 @@
+## This example is not unifiable
+## future Cycle detected in subproblem 9
+
 L_0 =?= f(Y[0],f(Y[1],f(Y[2],f(Y[0],f(Y[1],Y[2])))))
 L <== f(f(X[0],f(X[10],f(X[95],f(X[0],f(X[10],X[95]))))),L_1)

@@ -12,7 +12,7 @@ if __name__ == "__main__":
     assert(len(argv)>=2)
     if argv[1] =="Test":
         Test.test()
-    if argv[1] =="Build":
+    elif argv[1] =="Build":
         debug = int(argv[5]) if len(argv)==6 and argv[4] == "debug" else 0
         Test.testExampleSize(argv[2],int(argv[3]),debug)
     else:

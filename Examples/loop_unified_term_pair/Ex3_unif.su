@@ -1,0 +1,14 @@
+## This is the unified term for Ex3.su
+## We first construct the following loop
+## h(h(X[0],h(X[1],X[0])),h(h(X[1],h(X[2],X[1])),L_0)) =?=  h(Y[0],h(Y[1],Y[0]))
+## L <== h(h(X[2],h(X[3],X[2])),h(h(X[3],h(X[4],X[3])),L_2))
+## Then we us it's unifier to construct the loop
+## below. Interestingly there are no variables
+## in the final loop after unification and the
+## resulting term required 50 iterations to terminate.
+
+
+h(h(R_0,h(W_1,R_0)),h(h(W_1,h(R_2,W_1)),L_0)) =?=  h(Y[0],h(Y[1],Y[0]))
+L <== h(h(R_2,h(W_3,R_2)),h(h(W_3,h(R_4,W_3)),L_2))
+R <== L_2
+W <== h(W_3,h(R_4,W_3))

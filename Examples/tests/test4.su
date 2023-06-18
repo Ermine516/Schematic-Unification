@@ -1,2 +1,5 @@
+## This example is not unifiable
+## Cycle detected in subproblem 9
+
 L_0 =?= f(Y[0],f(Y[1],Y[0]))
 L <== f(f(X[1],f(X[0],f(X[1],f(X[0],f(X[1],X[0]))))),L_1)

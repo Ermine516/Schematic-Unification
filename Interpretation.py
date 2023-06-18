@@ -113,6 +113,6 @@ class Interpretation:
             term.inducApp(lambda a:self.extractclasses(sym,a))
 # TODO The code below stops nested recursion. Should consider
 # what to do about it
-        elif not self.nesting and type(term) is Rec:
-            if term.func.name != sym:
-                raise self.InvalidRecursionException(term.func.name,sym)
+        # elif not self.nesting and type(term) is Rec:
+        #     if term.func.name != sym:
+        #         raise self.InvalidRecursionException(term.func.name,sym)
