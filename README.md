@@ -113,3 +113,44 @@ This results in a partial application of the interpretation to the input terms:
 
 	==========================================================
 		 unifiable
+
+   # Experimental Feature
+
+Using the command **--unifier**, the procedure computes a new interpretation and the appropriate bindings that make the initial terms equivalent. 
+This approach works for simple examples, but it is not known if it generalizes. Below are some working examples
+
+	python Main.py Amm Examples/tests/test1.su --debug 1 --unifier
+ 
+ output:
+	Loop Unification Problem:
+		
+  		h(h(X0,h(X1,X0)),L_1) =?= h(Y0,h(Y1,Y0))
+
+	Interpreted Class definitions:
+
+		L_0 <== h(h(X0,h(X1,X0)),L_1)
+
+	==========================================================
+	==========================================================
+	Unifier Terms:
+
+		h(h(X0,h(X1,X0)),h(h(X1,h(X2,X1)),L_0))
+		h(Y0,h(Y1,Y0))
+
+	Unifier Interpreted Class definitions:
+
+		L_0 <== h(h(X2,h(X3,X2)),h(h(X3,h(X4,X3)),L_2))
+		IA_0 <== h(X3,h(X4,X3))
+		IB_0 <== L_2
+
+	Unifier Bindings (triangular form):
+
+		X1 <== IA_0
+		X3 <== IA_2
+		X0 <== IB_0
+		X2 <== IB_2
+		Y1 <== h(X1,h(X2,X1))
+		Y0 <== L_0
+
+
+   
