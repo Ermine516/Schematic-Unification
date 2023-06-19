@@ -29,10 +29,19 @@ class Func:
 
 class Term:
     """Type of terms for which we can do unification and instantiation."""
+    def inducAppRebuild(self,f):
+        if isinstance(self,App):
+            return self.func(*map(lambda x: x.inducAppRebuild(f),self.args))
+        else:
+            return f(self)
     def inducApp(self,f):
-        ret =[]
-        for x in self.args: ret.append(f(x))
-        return ret
+        if isinstance(self,App):
+            ret =[]
+            for x in self.args: ret.append(f(x))
+            return ret
+        else:
+            print("here",self,f(self))
+            return f(self)
     def containsVar(self,v):
             if type(self) is Var and self==v: return True
             elif type(self) is App: return reduce(lambda a,b: a or b.containsVar(v),self.args,False)
