@@ -4,6 +4,7 @@ from Unifier import *
 from Term import *
 from Interpretation import *
 from Namer import *
+import functools
 class LoopUnif:
     def __init__(self,I,debug=0,toUnif=[],unifierCompute=False):
         self.debug = debug
@@ -30,54 +31,115 @@ class LoopUnif:
             self.update_subproblems(subp)
             self.update()
         if self.debug >1: self.print_final_results()
-        if self.debug != -1: print("\t unifiable")
+        if self.debug in [0,1] and not self.unifierCompute: print("\t unifiable")
 ## What is below only works if there is a single interpreted Variable
+## We will assume the left side always contains the interpreted variables
+## and that the original problem only has a single unification Problem
         if self.unifierCompute:
             self.computeTheUnifier()
 
     def computeTheUnifier(self):
-            shiftu = lambda l: self.shift(None,l)[1]
-            recvar = list(self.I.mappings.keys())[0]
-            thebranch=self.subproblems.closedbranches[0]
-            loopingIdx=thebranch.cyclicIdx
-            recterm = Rec(Func(recvar,1),Idx(loopingIdx))
-            newmapping= recterm
-            for i in range(loopingIdx,thebranch.idx):
-                newmapping= newmapping.inducAppRebuild(shiftu)
-            change = len(range(loopingIdx,thebranch.idx))
-            recshift = lambda x,y: Rec(x.func,(Idx(y))) if isinstance(x,Rec) else x
+        shiftc = lambda l,r: (l,self.I.increment(r.func.name,r.idx,clean=True) if type(r) is Rec else r)
+        shiftu = lambda l: shiftc(None,l)[1]
+        recvar = list(self.I.mappings.keys())[0]
+        thebranch=self.subproblems.closedbranches[0]
+        leafIdx=thebranch.cyclicIdx
+        sproutIdx=thebranch.idx
+        change = len(range(leafIdx,sproutIdx))
+        recterm = Rec(Func(recvar,1),Idx(leafIdx))
+## computing the new definition of the interpreted variable
+        newmapping= recterm
+        for i in range(leafIdx,sproutIdx):
+            newmapping= newmapping.inducAppRebuild(shiftu)
+## need to shift the interpreted variable occurance down
+        recshift = lambda x,y: Rec(x.func,(Idx(y))) if isinstance(x,Rec) else x
+        newmapping= newmapping.inducAppRebuild(lambda x:recshift(x,change))
+## need to get the original unification problem associated with the branch
+        while thebranch.parent !=None:
+            thebranch = thebranch.parent
 
-            newmapping= newmapping.inducAppRebuild(lambda x:recshift(x,change))
-            while thebranch.parent !=None:
-                thebranch = thebranch.parent
-## We will assume the left side always contains the interpreted variables
-## and that the original problem only has a single unification Problem
-            newleft= thebranch.subproblem[0][1]
-            for i in range(0,loopingIdx):
-                newleft= newleft.inducAppRebuild(shiftu)
-            newleft= newleft.inducAppRebuild(lambda x:recshift(x,0))
-            newunifproblem = [newleft,thebranch.subproblem[1][1]]
-            I2 = Interpretation()
-            I2.add_relevent_vars(newunifproblem)
-            recursionVar=Func(recvar,1)
-            I2.add_mapping(recursionVar,newmapping)
-            lu = LoopUnif(I2,-1,newunifproblem,unifierCompute=False)
-            lu.loop_unif()
-            unif_bindings = []
-            names = Namer("I")
-            for x,y in [ x for x in lu.unifier.local_bindings(0) if str(x[0])[0]!= "*"]:
-                if str(y)[0]== "*": unif_bindings.append((x,recursionVar(Idx(0))))
-                else: unif_bindings.append((x,y))
-            for x,y in [ x for x in lu.unifier.local_bindings(1) if str(x[0])[0]!= "*"]:
-                if str(y)[0]== "*":
+## need to shift the left side of the original problem to the idx of the sprout
+        newleft= thebranch.subproblem[0][1]
+        for i in range(0,leafIdx):
+            newleft= newleft.inducAppRebuild(shiftu)
+## need to shift the interpreted variable occurance down
+        newleft= newleft.inducAppRebuild(lambda x:recshift(x,0))
+
+
+## new unification problem with sprout at 1 and leaf at 2
+        newunifproblem = [newleft,thebranch.subproblem[1][1]]
+        I2 = Interpretation()
+        I2.add_relevent_vars(newunifproblem,clean=True)
+        recursionVar=Func(recvar,1)
+        I2.add_mapping(recursionVar,newmapping,clean=True)
+        lu = LoopUnif(I2,-1,newunifproblem,unifierCompute=False)
+        lu.loop_unif()
+## we use the new solution to build the unifier
+        unif_bindings = []
+        names = Namer("I")
+# We need to build the mappings for variables in the sprout-leaf pairs
+        VarMappings= set()
+        for cycle in  lu.subproblems.closedbranches:
+            for x,y in cycle.cyclic:
+                VarMappings.update(LoopUnif.matchedTerms(y[1],x[1]))
+        VarMappings = dict(VarMappings)
+        for x,y in [ x for x in lu.unifier.local_bindings(1) if str(x[0])[0]!= "*"]:
+            if str(y)[0]== "*":
+                subproblemclass = Func(names.current_name(),1)
+                names.next_name()
+                unif_bindings.append((x,subproblemclass(Idx(0))))
+                I2.add_mapping(subproblemclass,recursionVar(Idx(change)))
+                if x in VarMappings.keys():
+                    unif_bindings.append((Var.find(VarMappings[x]),subproblemclass(Idx(change))))
+
+            elif isinstance(x,Var) and isinstance(y,Var):
+                unif_bindings.append((x,y))
+            else:
+                if x in VarMappings.keys():
                     subproblemclass = Func(names.current_name(),1)
+                    names.next_name()
+                    I2.add_mapping(subproblemclass,y)
                     unif_bindings.append((x,subproblemclass(Idx(0))))
-                    I2.add_mapping(subproblemclass,recursionVar(Idx(change)))
-                else: unif_bindings.append((x,y))
-            if self.debug >=1: lu.print_unifier_details(newunifproblem,unif_bindings)
-            for cycle in  lu.subproblems.closedbranches:
-                print('\n\t'.join([str(x)+" => "+str(y) for x,y in cycle.cyclic]))
-                
+                    unif_bindings.append((Var.find(VarMappings[x]),subproblemclass(Idx(2))))
+                elif x in VarMappings.values():
+                    continue
+                else:
+                    unif_bindings.append((x,y))
+        for x,y in [ x for x in lu.unifier.local_bindings(0) if str(x[0])[0]!= "*"]:
+            if str(y)[0]== "*":
+                unif_bindings.append((x,recursionVar(Idx(0))))
+                if x in VarMappings.keys():
+                    unif_bindings.append((VarMappings[x],recursionVar(Idx(change))))
+            elif isinstance(x,Var) and isinstance(y,Var):
+                unif_bindings.append((x,y))
+            else:
+                if x in VarMappings.keys():
+                    subproblemclass = Func(names.current_name(),1)
+                    names.next_name()
+                    I2.add_mapping(subproblemclass,y)
+                    unif_bindings.append((x,subproblemclass(Idx(0))))
+                    unif_bindings.append((VarMappings[x],subproblemclass(Idx(2))))
+                elif x in VarMappings.values():
+                    continue
+                else:
+                    unif_bindings.append((x,y))
+
+    #    if self.debug >=1:
+        lu.print_unifier_details(newunifproblem,unif_bindings)
+
+    # def check(self,t):
+    #     if isinstance(t,App):
+    #         for x in t.args: self.check(x)
+    #     elif isinstance(t,Var):
+    #         print(repr(t),str(t))
+
+    def matchedTerms(x,y):
+        if isinstance(x,App):
+            return reduce(lambda a,b: a.union(b),map(lambda a: LoopUnif.matchedTerms(*a),zip(x.args,y.args)),set())
+        elif isinstance(x,Var):
+            return set([(x,y)])
+        else:
+            return set()
     def current(self):
         return self.subproblems.current()
 
@@ -158,12 +220,12 @@ class LoopUnif:
         print("==========================================================")
         print("Unifier Terms:\n")
         for x in unif_terms:
-            print("\t"+ str(x))
+            print("\t"+ repr(x))
         print()
         print("Unifier Interpreted Class definitions:\n")
         for x in self.I.mappings.keys():
-            print("\t"+ x+"_0"+" <== "+str(self.I.mappings[x]))
+            print("\t"+ x+"_0"+" <== "+repr(self.I.mappings[x]))
         print()
-        print("Unifier Bindings:\n")
+        print("Unifier Bindings (triangular form):\n")
         for x,y in unif_bindings:
-            print("\t"+ str(x)+" <== "+ str(y))
+            print("\t"+ repr(x)+" <== "+ str(y))

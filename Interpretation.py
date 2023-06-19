@@ -41,18 +41,24 @@ class Interpretation:
         self.varsenum ={}
         self.revvarsenum ={}
         self.nesting = nesting
-    def add_relevent_vars(self,terms):
+    def cleanVariable():
+        for x in varsenum.keys():
+            for y in varsenum[x].keys():
+                for z in varsenum[x][y].keys():
+                    z.reset()
+    def add_relevent_vars(self,terms,clean=False):
         for x,y in self.varsenum.items():
             for t in terms:
-                self.add_relevent_vars_helper(x,t)
-    def add_relevent_vars_helper(self,rec,term):
+                self.add_relevent_vars_helper(x,t,clean)
+    def add_relevent_vars_helper(self,rec,term,clean=False):
         if  type(term)  is Var:
             if term.vc in self.varsenum[rec].keys():
+                if clean: term.reset()
                 self.varsenum[rec][term.vc][term.idx],self.revvarsenum[rec][term.vc][term] = term, term.idx
         elif type(term) is App:
             for t in term.args:
                 self.add_relevent_vars_helper(rec,t)
-    def add_mapping(self,sym,term):
+    def add_mapping(self,sym,term,clean=False):
         if sym.arity != 1: raise InvalidFunctionException(sym)
         try:
             self.associated_classes[sym.name] = {}
@@ -71,10 +77,11 @@ class Interpretation:
 
         self.varsenum[sym.name] = {x:{} for x in self.associated_classes[sym.name] }
         self.revvarsenum[sym.name] ={x:{} for x in self.associated_classes[sym.name]}
-        self.initialize(term,sym.name)
+        self.initialize(term,sym.name,clean)
 
-    def initialize(self,t,sym):
+    def initialize(self,t,sym,clean=False):
         if type(t) is Var:
+            if clean: t.reset()
             if not t in self.revvarsenum[sym][t.vclass()].keys():
                 self.varsenum[sym][t.vclass()][t.id()],self.revvarsenum[sym][t.vclass()][t] = t,t.id()
                 return t
@@ -87,18 +94,21 @@ class Interpretation:
         else:
             raise Exception
 
-    def increment(self,sym,idx):
-        return self.increment_help(self.mappings[sym],sym,idx.number)
+    def increment(self,sym,idx,clean=False):
+        return self.increment_help(self.mappings[sym],sym,idx.number,clean)
 
-    def increment_help(self,t,sym,num):
+    def increment_help(self,t,sym,num,clean=False):
         if type(t) is Var:
             if not t.idx+num in self.varsenum[sym][t.vc].keys():
                 newvar = Var(t.vc,(t.idx+num))
                 self.varsenum[sym][t.vc][t.idx+num],self.revvarsenum[sym][t.vc][newvar] = newvar, t.idx+num
                 return newvar
-            else: return Var.find(self.varsenum[sym][t.vc][t.idx+num])
+            else:
+                if clean:
+                    self.varsenum[sym][t.vc][t.idx+num].reset()
+                return Var.find(self.varsenum[sym][t.vc][t.idx+num])
         elif type(t) is App:
-            return t.func(*map(lambda a:  self.increment_help(a,sym,num),t.args))
+            return t.func(*map(lambda a:  self.increment_help(a,sym,num,clean),t.args))
         elif type(t) is Rec:
             return t.func(Idx(num+(t.idx.number if t.func.name == sym else 0)))
         else: raise Exception

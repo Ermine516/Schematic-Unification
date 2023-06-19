@@ -216,7 +216,7 @@ class App(Term):
 
     def __repr__(self):
         args = ("" if not self.args
-                else '(' + ','.join(str(a) for a in self.args) + ')')
+                else '(' + ','.join(repr(a) for a in self.args) + ')')
         return f"{self.func.name}{args}"
 
 class Rec(Term):
