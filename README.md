@@ -10,7 +10,7 @@ To run the test suite, use the following command:
 
 Below is an example of how to run the code on one of the example files: 
 
-	python Main.py Amm Examples/test7.su --debug=2
+	python Main.py Amm Examples/tests/test7.su --debug=2
 
 this command results in the following output:
 
