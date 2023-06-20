@@ -1,10 +1,12 @@
 # Schematic-Unification
-The code in this repository implements a unification procedure for Simple Linear Loops (See https://arxiv.org/abs/2306.09152). The procedure implemented is not the same procedure discussed in the paper, but rather a variant of the Martelli-Montanari unification algorithm. The implemented algorithm can take Simple Loops or even loops with nested arithmetic progressive terms as input, but is only proven to work on Simple Linear Loops. The code requires pyparsing 3.0.9. 
+The code in this repository implements a unification procedure for Simple Linear Loops (See https://arxiv.org/abs/2306.09152). The procedure implemented is not the same procedure discussed in the paper, but rather a variant of the Martelli-Montanari unification algorithm. The implemented algorithm can take Simple Loops or even loops with nested arithmetic progressive terms as input, but is only proven to work on Simple Linear Loops. The code requires the following libraries:
+
+	pyparsing 3.0.9 
 
 
 To run the test suite, use the following command:
 
-	python main.py Test
+	python Main.py Test
 
 Below is an example of how to run the code on one of the example files: 
 
