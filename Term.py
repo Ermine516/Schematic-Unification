@@ -173,10 +173,10 @@ class Var(Term):
     def __str__(self):
         c = self.vclass()
         i = self.id()
-        return f"{c}"+f"{i}"
+        return f"{c}"+f"[{i}]"
 
     def __repr__(self):
-        return f"{self.vc}"+f"{self.idx}"
+        return f"{self.vc}"+f"[{self.idx}]"
 
 class Idx(Term):
     def __init__(self,idx):

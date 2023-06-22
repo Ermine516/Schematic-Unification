@@ -210,7 +210,7 @@ class LoopUnif:
             print()
             print("Interpreted Class definitions:\n")
             for x in self.I.mappings.keys():
-                print("\t"+ x+"_0"+" <== "+str(self.I.mappings[x]))
+                print("\t"+ x+" <== "+str(self.I.mappings[x]))
             print()
 
         else:
@@ -224,7 +224,7 @@ class LoopUnif:
         print()
         print("Unifier Interpreted Class definitions:\n")
         for x in self.I.mappings.keys():
-            print("\t"+ x+"_0"+" <== "+repr(self.I.mappings[x]))
+            print("\t"+ x+" <== "+repr(self.I.mappings[x]))
         print()
         print("Unifier Bindings (triangular form):\n")
         for x,y in unif_bindings:
