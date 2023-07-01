@@ -210,7 +210,7 @@ class LoopUnif:
             print()
             print("Interpreted Class definitions:\n")
             for x in self.I.mappings.keys():
-                print("\t"+ x+" <== "+str(self.I.mappings[x]))
+                print("\t"+ x+"_i"+" <== "+self.I.mappings[x].strAlt("i"))
             print()
 
         else:

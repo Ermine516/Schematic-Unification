@@ -174,7 +174,11 @@ class Var(Term):
         c = self.vclass()
         i = self.id()
         return f"{c}"+f"[{i}]"
-
+    def strAlt(self,tag):
+        c = self.vclass()
+        i= str(self.id())
+        i = tag if i=="0" else tag+"+"+i
+        return f"{c}"+f"[{i}]"
     def __repr__(self):
         return f"{self.vc}"+f"[{self.idx}]"
 
@@ -207,7 +211,9 @@ class App(Term):
     def __str__(self):
         argsstr = "("+','.join([str(x) for x in self.args])+")" if len(self.args)>0 else ""
         return self.func.name+argsstr
-
+    def strAlt(self,tag):
+        argsstr = "("+','.join([ x.strAlt(tag) for x in self.args])+")" if len(self.args)>0 else ""
+        return self.func.name+argsstr
     def __eq__(self, other: "App"):
         return isinstance(other, __class__) and self.func == other.func and self.args == other.args
 
@@ -236,6 +242,9 @@ class Rec(Term):
 
     def __str__(self):
         return self.func.name+"_"+str(self.idx)
+    def strAlt(self,tag):
+        i=str(self.idx)
+        return self.func.name+"_"+( tag if  i== "0" else "{"+tag+"+"+str(self.idx)+"}")
 
     def __eq__(self, other: "Rec"):
         return isinstance(other, __class__) and self.func == other.func and self.idx == other.idx
