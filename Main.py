@@ -33,7 +33,8 @@ def unify():
             e.handle()
             return None
         for m in mappings:I.add_mapping(*m)
-        I.add_relevent_vars(unif)
+        for u in unif:
+            I.add_relevent_vars(u)
         lu = LoopUnif(I,args.debug,unif,unifierCompute=args.unifier)
         lu.loop_unif()
 
@@ -45,3 +46,5 @@ if __name__ == "__main__":
         Test.testExampleSize(args.unif_prob,args.unroll,args.debug)
     elif args.procedure=="Amm":
         unify()
+    elif args.procedure=="Exu":
+        unify2()
