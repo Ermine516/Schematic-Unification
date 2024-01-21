@@ -1,6 +1,6 @@
 from sys import argv
-from LoopUnif import *
-from Interpretation import *
+from SchematicUnification import *
+from SchematicSubstitution import *
 from functools import reduce
 from TermParser import *
 from os import listdir
@@ -19,7 +19,7 @@ def parsing_CMD():
         return  parser.parse_args()
 def unify():
     tp =TermParser()
-    I = Interpretation()
+    I = SchematicSubstitution()
     with open(args.unif_prob) as f:
         try:
             unif, mappings= tp.parse_input(f.readlines())
@@ -35,8 +35,8 @@ def unify():
         for m in mappings:I.add_mapping(*m)
         for u in unif:
             I.add_relevent_vars(u)
-        lu = LoopUnif(I,args.debug,unif,unifierCompute=args.unifier)
-        lu.loop_unif()
+        su = SchematicUnification(I,args.debug,unif,unifierCompute=args.unifier)
+        su.unif()
 
 if __name__ == "__main__":
     args= parsing_CMD()

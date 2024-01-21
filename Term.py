@@ -40,7 +40,6 @@ class Term:
             for x in self.args: ret.append(f(x))
             return ret
         else:
-            print("here",self,f(self))
             return f(self)
     def containsVar(self,v):
             if type(self) is Var and self==v: return True
