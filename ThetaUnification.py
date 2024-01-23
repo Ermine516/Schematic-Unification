@@ -9,6 +9,7 @@ class ThetaUnification(Solver):
             self.dom = [x.name for x in dom] # Set of excluded variable symbols
             self.recursions = set()
             self.seen = set()
+            self.seenTrans = set()
         def __str__(self):
             exset = str([str(x) for x in self.dom])
             ret=f"Active({exset}):\n"
@@ -40,16 +41,16 @@ class ThetaUnification(Solver):
             self.recursions.update(findRecursions(binding))
             self.store.add(binding)
     
-    def __init__(self,SchematicSubstitution=None,debug=0):
+    def __init__(self,SchematicSubstitution=None,debug=0,start_time=-1):
         self.recursions=set()
-        super().__init__(SchematicSubstitution,debug)
+        super().__init__(SchematicSubstitution,debug,start_time)
         
     def unify(self,problem):
         def isFutureRelevant(x):
             for r in config.recursions:
                  if x.vc in self.SchematicSubstitution.associated_classes[r.func.name].keys():
                     minval = self.SchematicSubstitution.associated_classes[r.func.name][x.vc]
-                    if r.idx.number +minval < x.idx: return True
+                    if r.idx.number +minval <= x.idx: return True
             return False
 
         config = ThetaUnification.Configuration(problem,self.SchematicSubstitution.symbols)  
@@ -60,13 +61,14 @@ class ThetaUnification(Solver):
         isRec = lambda a: type(a) is Rec
         isVar = lambda a: type(a) is Var
         unseen = lambda a: not a in config.seen
+        unseenTrans = lambda a: not a in config.seenTrans
         stored = lambda a: a in config.store
 
     #Conditions for rules
         decomposition = lambda x,y:  unseen((x,y)) and isTerm(x) and isTerm(y) and x.func.name == y.func.name
         symmetry = lambda x,y: x!=y and unseen((y,x)) and (isVar(y) or (isRec(y) and isTerm(x)))
         clash = lambda x,y:  isTerm(x) and isTerm(y)  and x.func.name != y.func.name
-        transitivity = lambda x,y: lambda a: a[0]==x and y!=a[1] and unseen((a[1],y)) and unseen((y,a[1])) 
+        transitivity = lambda x,y: lambda a: a[0]==x and y!=a[1] and unseen((a[1],y)) and unseen((y,a[1])) and unseenTrans((x,y,a[1]))
     # Checks whether the given binding 'a' is relevent to the binding stored in the configuration
         relevantCheck = lambda a: (lambda b,c: b or a[0].occurs(c[1]) or a[1].occurs(c[0]) or (not type(a[0]) is Rec and a[0]==c[0])) 
         isRelevant = lambda a: reduce(relevantCheck(a),config.store,False)  
@@ -104,7 +106,7 @@ class ThetaUnification(Solver):
                     change =True
     # Clash Rule
                 elif clash(x,y):
-                    raise Solver.ClashExeption(x.func.name,[x,y])
+                    raise Solver.ClashExeption(x.func.name,[x,y],self.start_time)
                     change =True
     # Store-Θ-R Rule
                 elif x != y and isVar(x) and  not stored((x,y)) and isRelevant((x,y)):
@@ -125,6 +127,9 @@ class ThetaUnification(Solver):
                 else:
                     for x1,y1 in filter(transitivity(x,y),config.active):   
                         if self.debug >2: print(f"\t Transitivity: {x} =?= {y} and {x1} =?= {y1}")
+                        config.seenTrans.add((x,y,y1))
+                        config.seenTrans.add((x,y1,y))
+
                         updates.add((y,y1))
                         change =True
 

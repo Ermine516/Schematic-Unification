@@ -41,11 +41,6 @@ class SchematicSubstitution:
         self.varsenum ={}
         self.revvarsenum ={}
         self.nesting = nesting
-    def cleanVariable():
-        for x in varsenum.keys():
-            for y in varsenum[x].keys():
-                for z in varsenum[x][y].keys():
-                    z.reset()
     def add_relevent_vars(self,terms,clean=False):
         for x,y in self.varsenum.items():
             for t in terms:
@@ -63,7 +58,7 @@ class SchematicSubstitution:
         try:
             self.associated_classes[sym.name] = {}
             self.extractclasses(sym.name,term)
-        except Interpretation.InvalidRecursionException as e:
+        except SchematicSubstitution.InvalidRecursionException as e:
             self.associated_classes.pop(sym.name)
             e.handle()
             return
@@ -71,8 +66,8 @@ class SchematicSubstitution:
         class_groups = list(map(lambda a: (a,set(self.associated_classes[a].keys())),self.associated_classes.keys()))
         while len(class_groups)!= 0:
             vclass,cur = class_groups.pop()
-            # for x,y in  class_groups:
-            #     if len(cur.intersection(y))!= 0: raise ClassOverlapException(vclass,x,self.mappings)
+            for x,y in  class_groups:
+                if len(cur.intersection(y))!= 0: raise ClassOverlapException(vclass,x,self.mappings)
         self.mappings[sym.name] = term
 
         self.varsenum[sym.name] = {x:{} for x in self.associated_classes[sym.name] }
@@ -121,8 +116,7 @@ class SchematicSubstitution:
                 self.associated_classes[sym][term.vc] = min(term.idx,self.associated_classes[sym][term.vc])
         elif type(term) is App:
             term.inducApp(lambda a:self.extractclasses(sym,a))
-# TODO The code below stops nested recursion. Should consider
-# what to do about it
-        # elif not self.nesting and type(term) is Rec:
-        #     if term.func.name != sym:
-        #         raise self.InvalidRecursionException(term.func.name,sym)
+#The code below stops nested recursion.
+        elif not self.nesting and type(term) is Rec:
+            if term.func.name != sym:
+                raise self.InvalidRecursionException(term.func.name,sym)

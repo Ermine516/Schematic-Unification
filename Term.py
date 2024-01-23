@@ -41,28 +41,6 @@ class Term:
             return ret
         else:
             return f(self)
-    def containsVar(self,v):
-            if type(self) is Var and self==v: return True
-            elif type(self) is App: return reduce(lambda a,b: a or b.containsVar(v),self.args,False)
-            return False
-    def apply_unif(self,unif):
-            if type(self) is Var:
-                if self.vc in unif.keys() and self.idx in unif[self.vc].keys():
-                    l,r = unif[self.vc][self.idx]
-                    return r.apply_unif(unif)
-                else: return self
-            elif type(self) is App: return self.func(*map(lambda a: a.apply_unif(unif),self.args))
-            elif type(self) is Rec: return self
-    def apply_unif_vc(self,rVar,cVar,unif):
-            if type(self) is Var and self.vc==rVar.vc:
-                l,r = unif[rVar.vc][self.idx]
-                return r.apply_unif_vc(rVar,cVar,unif)
-            elif type(self) is Var and self.vc!=rVar.vc:
-                if self.vc in unif.keys() and self.idx in unif[self.vc].keys() and unif[self.vc][self.idx][1].containsVar(cVar):
-                    return unif[self.vc][self.idx][1].apply_unif({cVar.vc:{cVar.idx:(cVar,rVar)}})
-                else: return self
-            elif type(self) is App: return self.func(*map(lambda a: a.apply_unif_vc(rVar,cVar,unif),self.args))
-            elif type(self) is Rec: return self
 
     def occurs(self,t):
         if self == t:
@@ -71,31 +49,6 @@ class Term:
             return reduce(lambda a,b: a or self.occurs(b),t.args,False)
         else:
             False
-    def isalpha(self,t):
-            varpairs = Term.isalphahelper(self,t)
-            if not varpairs: return None
-            check = {}
-            for x,y in varpairs:
-                if type(x) is Rec: continue
-                elif x in check.keys() and check[x] != y: return None
-                elif x.vclass() != y.vclass(): return None
-                check[x] = y
-            return check
-
-    def isalphahelper(s,t):
-        if type(s) != type(t): return None
-        if type(s) is Idx: return []
-        elif type(s) is Var: return [(Var.find(s),Var.find(t))]
-        elif type(s) is App and s.func!= t.func: return None
-        elif type(s) is App:
-            ret =[]
-            for x,y in zip(s.args,t.args):
-                res = Term.isalphahelper(x,y)
-                if not res: return None
-                ret.extend(res)
-            return ret
-        elif type(s) is Rec  and s.func == t.func and s.idx.number >=t.idx.number: return [(s,t)]
-        else: return None
     pass
 
 class Var(Term):
@@ -173,13 +126,15 @@ class Var(Term):
         c = self.vclass()
         i = self.id()
         return f"{c}"+f"[{i}]"
+
+
     def strAlt(self,tag):
         c = self.vclass()
         i= str(self.id())
         i = tag if i=="0" else tag+"+"+i
         return f"{c}"+f"[{i}]"
     def __repr__(self):
-        return f"{self.vc}"+f"[{self.idx}]"
+        return f"{self.vc.lower()}_{self.idx}"
 
 class Idx(Term):
     def __init__(self,idx):
@@ -219,6 +174,7 @@ class App(Term):
     def __hash__(self):
         return hash((self.func, self.args))
 
+
     def __repr__(self):
         args = ("" if not self.args
                 else '(' + ','.join(repr(a) for a in self.args) + ')')
@@ -241,6 +197,8 @@ class Rec(Term):
 
     def __str__(self):
         return self.func.name+"_"+str(self.idx)
+
+
     def strAlt(self,tag):
         i=str(self.idx)
         return self.func.name+"_"+( tag if  i== "0" else "{"+tag+"+"+str(self.idx)+"}")
@@ -252,4 +210,4 @@ class Rec(Term):
         return hash((self.func, self.idx))
 
     def __repr__(self):
-        return self.func.name+"_"+str(self.idx)
+        return self.func.name.lower()+"_"+"r"+"_"+str(self.idx)

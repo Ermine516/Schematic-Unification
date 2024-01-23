@@ -3,15 +3,14 @@ from collections import defaultdict
 from Solver import Solver
 from functools import reduce
 from Term import *
-
 class MM(Solver):
-    def __init__(self,SchematicSubstitution=None,debug=0):
+    def __init__(self,SchematicSubstitution=None,debug=0,start_time=-1):
        self.problemVars={}
        self.var_reps = set()
        self.tosolve = set()
        self.solved =set()
        self.currentprob=0
-       super().__init__(SchematicSubstitution,debug)
+       super().__init__(SchematicSubstitution,debug,start_time)
 
     def getrep(self,t):
         rep =self.problemVars[t.vc][t.idx] 
@@ -42,7 +41,7 @@ class MM(Solver):
 # and frontier
     def decompose(self,cur,ts):
         vars,terms,matches,syms =reduce(lambda a,b: self.mmeq(a,b) ,ts,([],[],defaultdict(lambda :[]),set()))
-        if len(syms)>1: raise Solver.ClashExeption(syms,ts)
+        if len(syms)>1: raise Solver.ClashExeption(syms,ts,self.start_time)
         elif len(vars)>0: return (reduce(lambda a,b:  Var.union(a,b),vars),[(set(vars),terms)])
         else:
             sym =syms.pop()
@@ -58,7 +57,7 @@ class MM(Solver):
         self.preprocess(problem)
         steps=0
         while len(self.var_reps)>0:
-            if self.debug==3: self.print_current_step(steps,self.tosolve)
+            if self.debug>2: self.print_current_step(steps,self.tosolve)
 #Get the next multi-equation with zero occurances
             cur = self.var_reps.pop()
 #Remove it from the to solve set
@@ -68,7 +67,7 @@ class MM(Solver):
 #decompose the terms on the right side of the multiequation to get
 #the common part and frontier
                 common,front = self.decompose(cur,cur.ts())
-                if self.debug==3:
+                if self.debug>2:
                     print("common: \n\t"+str(common))
                     print()
                     print("frontier: ")
@@ -79,22 +78,28 @@ class MM(Solver):
 #update tosolve some variables my have been updated
                 self.solved.add((cur,common))
                 for fvar,fterms in front:
-                    vrep = Var.find(list(fvar)[0])
-                    if self.debug==3: print("\t"+str(vrep.occs())+":{"+','.join([repr(x)for x in fvar])+"}"+" =?= "+"{{"+','.join([str(x)for x in fterms])+"}}" )
+                    vrep = Var.find(list(fvar)[0]) 
+                    if self.debug>2: print("\t"+str(vrep.occs())+":{"+','.join([str(x) for x in fvar])+"}"+" =?= "+"{{"+','.join([str(x)for x in fterms])+"}}" )
                     vrep.ts().extend(fterms)
                     if vrep.occs() == 0: self.var_reps.add(vrep)
                     self.tosolve.add(vrep)
                     self.solved.update([(v,vrep) for v in fvar if  v != vrep])
                 self.tosolve =set([Var.find(x) for x in self.tosolve])
-                if self.debug==3:
+                if self.debug>2:
                     print()
                     print("==========================================================")
             else:
-                if self.debug==3:
+                if self.debug>2:
                     print("==========================================================")
             steps+=1
 #If var_reps is empty and tosolve is not then we have a cycle
-        if len(self.tosolve)!=0: raise Solver.CycleException(self.tosolve)
+        if len(self.tosolve)!=0: raise Solver.CycleException(self.tosolve,start_time=self.start_time)
+        for vc in self.problemVars:
+            for idx in self.problemVars[vc]:
+                v = self.problemVars[vc][idx]
+                if v!= Var.find(v):
+                    self.solved.add((v,Var.find(v)))
+        self.clear()
         return dict(self.solved), None
 
     def preprocess(self,problem):
