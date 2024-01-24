@@ -1,3 +1,4 @@
-## A simple unifiable example
+## A linear Primitive example that unifies
+
 L_0 =?=  h(Y[0],h(Y[1],Y[0]))
 L <== h(h(X[0],h(X[1],X[0])),L_1)

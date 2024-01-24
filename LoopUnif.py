@@ -1,24 +1,67 @@
-from Solver import *
+from Solver import Solver
 from SubProblemTree import *
 from Unifier import *
 from Term import *
 from Interpretation import *
 from Namer import *
 import functools
+from ThetaUnif import ThetaUnif as tu
+from MAndM import MAndM as mm
+
 class LoopUnif:
-    def __init__(self,I,debug=0,toUnif=[],unifierCompute=False):
+
+    def __init__(self,SchematicSubstitution,debug=0,toUnif=[],unifierCompute=False):
         self.debug = debug
         self.shift = lambda l,r: (l,I.increment(r.func.name,r.idx) if type(r) is Rec else r)
-        self.solver = Solver(I)
+        self.foSolver = mm(SchematicSubstitution,debug)
+        self.SchSolver = tu(SchematicSubstitution,debug)
         self.unifier = Unifier()
         self.count = 0
-        self.I = I
+        self.SchematicSubstitution = SchematicSubstitution
         self.unifierCompute=unifierCompute
-        starter_var = self.solver.freshvar(False)
+        #starter_var = self.solver.freshvar(False)
         if toUnif ==[] :
             toUnif = [ x(Idx(0))  for x in I.symbols]
+        self.subproblems = SubProblemTree(toUnif)
 
-        self.subproblems = SubProblemTree([(starter_var,x) for x in toUnif ])
+
+    def loop_unif(self):
+        config = Configuration(self.UnifProb,set(),self.I.symbols)  
+        count=0
+        while count<20:
+            config = unify(config,self.I,self.debug)
+            if not config:
+                print("not Unifiable")
+                return
+            else:
+                print("RESULT:")
+                print(config)    
+            recursions = [(x.idx,self.I.increment(x.func.name,x.idx),y) for x,y in filter(lambda a: type(a[0]) is Rec, config.store)]
+            if len(recursions)>0:
+                vars = list(filter(lambda a:  type(a[0]) is Var, config.store))
+                toremove = recursions[0] if len(recursions) >0 else None
+                while toremove:
+                    toremove = None
+                    for x,y in vars:
+                        for i,x1,y1 in recursions:
+                            if  x.occurs(y1) or x.idx >i.number: #technically wrong
+                                recursions.append((i,x,y))
+                                toremove = (x,y)
+                                break  
+                        if toremove:
+                            break
+                    if toremove:
+                        vars.remove((x,y)) 
+                self.irrelevantProb.extend(vars)
+                config = Configuration([(x,y) for i,x,y in recursions],set(),self.I.symbols)  
+                # print("Next Problem:")
+                # print(config)
+                count+=1
+            else:
+                config.active =[]
+                # print(config)
+                return
+
 
     def loop_unif(self):
         while self.subproblems.getOpenBranch():
@@ -144,23 +187,37 @@ class LoopUnif:
         return self.subproblems.current()
 
     def update(self):
-        self.solver.clear()
+        self.foSolver.clear()
         self.count+=1
 
     def update_unifier(self,sol):
         if self.debug==3: self.print_unif_results(sol)
-        self.unifier.extend(self.current().idx,sol.items())
+        self.unifier.extend(self.current().idx,sol)
 
     def update_subproblems(self,sub):
-        subp = list(map(lambda a: self.add_relevent(a),sub))
-        if self.debug==3: self.print_sub_results(subp)
-        for s in subp: self.subproblems.addBranch(s)
-
+        #subp = list(map(lambda a: self.add_relevent(a),sub))
+        
+        if self.debug==3: self.print_sub_results(sub)
+        self.subproblems.addBranch(sub)
+    
+    def updateRec(self,b):
+        RecReplace = lambda x: self.SchematicSubstitution.increment(x.func.name,x.idx) if type(x) is Rec else x
+        return (b[0].inducAppRebuild(RecReplace),b[1].inducAppRebuild(RecReplace))
+    
+    def updateRec2(self,b):
+        RecReplace = lambda x: Var(x.func.name,x.idx.number) if type(x) is Rec else x
+        return (b[0].inducAppRebuild(RecReplace),b[1].inducAppRebuild(RecReplace))
+    
     def unify_current(self):
-        probterms = reduce(lambda a,b: a+[self.shift(*b)],self.current().subproblem,[])
-        if self.debug==3 or (self.count==0 and self.debug>0): self.print_current_problem(probterms)
-        for v,t in probterms: self.solver.add_eq(v,t)
-        return self.solver.unify(self.count,self.debug,self.I)
+        current = list(map(self.updateRec,self.current().subproblem))
+        if self.debug==3 or (self.count==0 and self.debug>0): self.print_current_problem(current)
+        store, context = self.SchSolver.unify(current)
+        self.foSolver.count = self.count
+        results , subprobs =self.foSolver.unify(list(map(self.updateRec2,context)))
+        print(context)
+        return  set(filter(lambda a: not a in store, context)), store
+       # probterms = reduce(lambda a,b: a+[self.shift(*b)],self.current().subproblem,[])
+       # return self.solver.unify(self.count,self.debug,self.I)
 
     def add_relevent(self, subp):
         relu,seen = set(),set()
@@ -185,7 +242,7 @@ class LoopUnif:
         return relu
 
     def print_unif_results(self,unif):
-        print("Unifier of "+str(self.count)+":\n"+ ''.join(["\t"+repr(x)+" <= "+str(y)+"\n" for x,y in unif.items()])+"\n")
+        print("Unifier of "+str(self.count)+":\n"+ ''.join(["\t"+repr(x)+" <= "+str(y)+"\n" for x,y in unif])+"\n")
 
     def print_final_results(self):
         self.subproblems.print_closures()
@@ -201,20 +258,22 @@ class LoopUnif:
                 cur = cur.parent
     def print_sub_results(self,subp):
         for i in range(0,len(subp)):
-            print("subproblem "+str(i)+" of "+str(self.count)+":\n", ''.join([ "\t"+"{"+repr(x)+"}"+" =?= "+"{{"+str(y)+"}}\n" for x,y in subp[i]]))
+            print("subproblem "+str(i)+" of "+str(self.count)+":\n", ''.join([ "\t"+"{"+repr(x)+"}"+" =?= "+"{{"+str(y)+"}}\n" for x,y in subp]))
         print("----------------------------------------------------------")
         print("----------------------------------------------------------")
-    def print_current_problem(self,probterms):
+    def print_current_problem(self,current):
         if self.count == 0:
-            print("Loop Unification Problem:\n\t"+ str(probterms[0][1])+" =?= "+str(probterms[1][1])+"\n")
+            print("Loop Unification Problem:\n" )
+            for x,y in current:
+                print(f"\t{x} =?= {y}\n")
             print()
             print("Interpreted Class definitions:\n")
-            for x in self.I.mappings.keys():
-                print("\t"+ x+"_i"+" <== "+self.I.mappings[x].strAlt("i"))
+            for x in self.SchematicSubstitution.mappings.keys():
+                print("\t"+ x+"_i"+" <== "+self.SchematicSubstitution.mappings[x].strAlt("i"))
             print()
 
         else:
-            print("Problem "+str(self.count)+":\n\t"+ '\n\t'.join([str(v)+" =?= "+str(t) for v,t in probterms])+"\n")
+            print("Problem "+str(self.count)+":\n\t"+ '\n\t'.join([str(v)+" =?= "+str(t) for v,t in current])+"\n")
         print("==========================================================")
     def print_unifier_details(self,unif_terms,unif_bindings):
         print("==========================================================")

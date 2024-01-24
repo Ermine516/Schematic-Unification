@@ -1,0 +1,6 @@
+## A linear Primitive example that does not unify
+## Recursion has multiple self references
+
+
+L_0 =?= f(Y[0],f(Y[1],f(Y[2],f(Y[0],f(Y[1],Y[3])))))
+L <== f(f(a,f(Z[1],f(X[0],f(X[0],f(Z[0],X[1]))))),f(L_1,L_1))

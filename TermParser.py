@@ -86,11 +86,11 @@ class TermParser:
         return self.found_rec[toks[0]](Idx(int(toks[1])))
 
     def parse_input(self,input):
-        unif = None
+        unif = set()
         mappings =[]
         for l in input:
             if  "##" != l[0:2] and "=?=" in l:
-                unif = list(self.unification_problem.parseString(l))
+                unif.add(tuple(self.unification_problem.parseString(l)))
             elif "##" != l[0:2] and "<==" in l:
                 mappings.append(tuple(self.mapping_problem.parseString(l)))
             else:
