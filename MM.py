@@ -30,12 +30,7 @@ class MM(Solver):
             for x in range(0,term.func.arity): matches[x].append(term.args[x])
         return (vars,terms,matches,syms)
 
-    def futureoccurs(self,c,recs):
-        for r in recs:
-            for c1, gap in  self.SchematicSubstitution.associated_classes[r.func.name].items():
-                if c1 in c.maxsub.keys() and c.maxsub[c1]>=gap+r.idx.number:
-                    return r
-        return None
+    
 # M and M decomposition function
 # decomposes the terms and builds the common part
 # and frontier

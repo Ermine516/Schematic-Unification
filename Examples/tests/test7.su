@@ -1,5 +1,4 @@
-## This example is unifiable and is handled by the
-## augmented martelli-montanari procedure
+## A linear Primitive example that unifies
 
 L_0 =?= f(Y[0],f(Y[1],Y[0]))
 L <== f(f(X[1],f(Z[0],f(X[1],f(X[0],f(Z[1],X[0]))))),L_1)

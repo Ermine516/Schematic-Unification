@@ -1,6 +1,0 @@
-## This example is unifiable and is handled by the
-## augmented martelli-montanari procedure
-
-L_0 =?= R_0
-R <== f(f(Y[0],Y[0]),R_1)
-L <== f(L_1,f(X[0],X[0]))

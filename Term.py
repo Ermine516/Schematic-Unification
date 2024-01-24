@@ -26,7 +26,6 @@ class Func:
         if len(args) == 1 and type(args[0]) is Idx: return Rec(self, *args)
         else: return App(self, *args)
 
-
 class Term:
     """Type of terms for which we can do unification and instantiation."""
     def inducAppRebuild(self,f):

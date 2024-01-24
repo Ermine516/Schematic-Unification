@@ -1,3 +1,5 @@
+## A linear Primitive example that unifies
+## Recursion has multiple self references
 
 L_0 =?=  h(h(Y[0],h(Y[1],Y[0])),h(h(R[0],R[1]),R[0]))
 

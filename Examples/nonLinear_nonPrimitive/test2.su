@@ -1,7 +1,4 @@
-## This example is unifiable and is handled by the
-## augmented martelli-montanari procedure
-## This is a complex example which Shallow and Linear
-
+## A Non-linear Primitive example that unifies
 
 h(g(L_0),f(W[0],f(W[1],f(W[2],f(W[0],f(W[1],W[2]))))),f(f(E[0],E[0]),M_4)) =?= h(g(f(Y[0],f(Y[1],Y[0]))),S_0,N_7)
 L <== f(f(X[1],f(Z[0],f(X[1],f(X[0],f(Z[1],X[0]))))),L_1)

@@ -11,14 +11,13 @@ import time
 
 class SchematicUnification:
 
-    def __init__(self,SchematicSubstitution,debug=0,toUnif=[],unifierCompute=False):
+    def __init__(self,SchematicSubstitution,debug=0,toUnif=[]):
         self.debug = debug
         self.foSolver = MM(SchematicSubstitution,debug)
         self.SchSolver = ThetaUnification(SchematicSubstitution,debug)
         self.unifier = Unifier()
         self.count = 0
         self.SchematicSubstitution = SchematicSubstitution
-        self.unifierCompute=unifierCompute
         if toUnif ==[] :
             toUnif = [ x(Idx(0))  for x in I.symbols]
         self.subproblems = SubProblemStack(toUnif,debug)
@@ -37,7 +36,7 @@ class SchematicUnification:
             self.update_subproblems(subp)
             self.update()
         if self.debug >1: self.print_final_results()  
-        if self.debug in [0,1] and not self.unifierCompute: print(f"\t unifiable --- {(time.time() - start_time)} seconds ---")
+        if self.debug in [0,1]: print(f"\t unifiable --- {(time.time() - start_time)} seconds ---")
 
 
     def unify_current(self):
@@ -50,8 +49,9 @@ class SchematicUnification:
 
         current = list(map(updateRec,self.current().subproblem))
         if self.debug>2 or (self.count==0 and self.debug>0): 
-            self.print_current_problem(current)
+            self.print_current_problem(self.current().subproblem)
             print()
+        if self.debug>2:    
             print("Theta Unification:\n")
         
         store, context = self.SchSolver.unify(current)
@@ -95,11 +95,11 @@ class SchematicUnification:
     
     def print_current_problem(self,current):
         if self.count == 0:
-            print("Loop Unification Problem:\n" )
+            print("Schematic Unification Problem:\n" )
             for x,y in current:
                 print(f"\t{x} =?= {y}\n")
             print()
-            print("Interpreted Class definitions:\n")
+            print("Schematic Substitution:\n")
             for x in self.SchematicSubstitution.mappings.keys():
                 print("\t"+ x+"_i"+" <== "+self.SchematicSubstitution.mappings[x].strAlt("i"))
             print()
