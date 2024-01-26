@@ -31,7 +31,10 @@ class Solver(ABC):
                 if self.addendum=="":print("Cycle Detected:")
                 else:  print("Cycle Detected ("+self.addendum+"):")
                 for x in self.ununified:
-                    print("\t"+x.format())
+                    if type(x) is Var:
+                        print("\t"+x.format())
+                    else:
+                        print(f"\t{x[0]} =?= {x[1]}")
                 print()
             
             else:

@@ -11,7 +11,9 @@ class SubProblem:
         self.cyclic = False
 
 class SubProblemStack:
-    clingoBasic = ["#show e/2.", "1{ e(X,Y): varr(Y)}1:- varl(X)." ":- e(X1,Y),e(X2,Y),X1!=X2."]
+    #clingoBasic = ["#show e/2.","#defined match/2.", "{ e(X,Y): varr(Y), varl(X)}.",":-  varr(Y), not e(_,Y).",":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."] #   ,":- e(X1,Y),e(X2,Y),X1!=X2.", ":- varl(X),recs(X),recs(Y),X!=Y, not e(X,Y)."
+
+    clingoBasic = ["#show e/2.","#defined match/2.", "1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."] #   ,":- e(X1,Y),e(X2,Y),X1!=X2.", ":- varl(X),recs(X),recs(Y),X!=Y, not e(X,Y)."
     def __init__(self,prob,debug=0):
         self.cycle = -1
         self.mapping =None
@@ -42,11 +44,11 @@ class SubProblemStack:
         for x in reversed(range(0, len(self))):
             left = self.Top()
             right = self.subproblems[x]
-            if len(left) == len(right) and x!=len(self):
-                if self.debug > 2: print(f"computing Subsumption between {x} and {len(self)}\n")
+            if len(left) >= len(right) and x!=len(self) :#and len(self)>30:
+                if self.debug > 5: print(f"computing Subsumption between {x} and {len(self)}\n")
                 prog = self.computerEncoding(left,right)
                 if prog:
-                    if self.debug >3: print("Answer Set Program:\n\n\t"+'\n\t'.join(prog)+"\n")
+                    if self.debug >5: print("Answer Set Program:\n\n\t"+'\n\t'.join(prog)+"\n")
                     return self.solverASP(prog,x)
         return False
     
@@ -78,36 +80,55 @@ class SubProblemStack:
                 return ret
             elif not type(x) is App and not type(y) is App: return set([(x,y)])
             else: return None
+        def getvarsrecs(t):
+            if type(t) is App:
+                ret=set()
+                for x in t.args: 
+                    ret.update(getvarsrecs(x))
+                return ret
+            else:
+                return set([t])
+
         prog = []
         prog.extend(SubProblemStack.clingoBasic) 
         varsLeft =set()
         varsRight=set()
+        recs =set()
         for p1 in left.subproblem:
             xt1,yt1 = p1
+            if type(xt1) is Rec: recs.add(xt1)
+            varsLeft.update(getvarsrecs(xt1))
+            varsLeft.update(getvarsrecs(yt1))
             validpairs={}
             for p2 in right.subproblem:
                 xt2,yt2 = p2
+                if type(xt2) is Rec: recs.add(xt2)
+                varsRight.update(getvarsrecs(xt2))
+                varsRight.update(getvarsrecs(yt2))
                 varMaps=compatibleTerms(yt1,yt2)
                 if varMaps:
                     varMaps.update(compatibleTerms(xt1,xt2))
                     key = "match("+str(p1)+","+str(p2)+")"
                     validpairs[key] = varMaps
             if len(validpairs) !=0:
-                prog.append("1{"+';'.join(validpairs.keys())+"}1.")
+                #prog.append("1{"+';'.join(validpairs.keys())+"}1.")
+                prog.append("{"+';'.join(validpairs.keys())+"}>=1.")
                 for pairing, map in validpairs.items():
                     for  xl,yl in map: 
                         prog.append(f":- {pairing}, not e({repr(xl)},{repr(yl)}).")
-                        varsLeft.add(xl)
-                        varsRight.add(yl)
+                    #prog.append(f":- not {pairing}, { ','.join(f"e({repr(xl)},{repr(yl)})" for xl,yl in map)}.")
             else:
                 if self.debug >2: print("\t Subsumption failed on "+str(p1)+"\n")
                 return None
         prog.append(''.join([f"varl({repr(y)})." for y in varsLeft ])) 
         prog.append(''.join([f"varr({repr(y)})." for y in varsRight ]))
+        prog.append(''.join([f"recs({repr(y)})." for y in recs ]))
+
         return prog  
 
 
     def print_closures(self):
+        if self.mapping:
             print("Recursion Found "+str(len(self))+" => "+str(self.cycle)+ " {"+ ' , '.join([f"{x}=>{y}" for x,y in self.mapping]) +"}")
             print()
             print("Subproblem "+str(len(self))+":")
@@ -118,3 +139,7 @@ class SubProblemStack:
             for x,y in self.subproblems[self.cycle].subproblem:
                 print(f"\t{x} =?= {y}") 
             print()
+            return True
+        else:
+            print("Non-Recursive, Finitely Unifiable.")
+            return False

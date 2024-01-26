@@ -40,7 +40,6 @@ class Term:
             return ret
         else:
             return f(self)
-
     def occurs(self,t):
         if self == t:
             return True

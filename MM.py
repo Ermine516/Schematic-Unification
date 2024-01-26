@@ -52,7 +52,7 @@ class MM(Solver):
         self.preprocess(problem)
         steps=0
         while len(self.var_reps)>0:
-            if self.debug>2: self.print_current_step(steps,self.tosolve)
+            if self.debug>3: self.print_current_step(steps,self.tosolve)
 #Get the next multi-equation with zero occurances
             cur = self.var_reps.pop()
 #Remove it from the to solve set
@@ -62,7 +62,7 @@ class MM(Solver):
 #decompose the terms on the right side of the multiequation to get
 #the common part and frontier
                 common,front = self.decompose(cur,cur.ts())
-                if self.debug>2:
+                if self.debug>3:
                     print("common: \n\t"+str(common))
                     print()
                     print("frontier: ")
@@ -74,17 +74,17 @@ class MM(Solver):
                 self.solved.add((cur,common))
                 for fvar,fterms in front:
                     vrep = Var.find(list(fvar)[0]) 
-                    if self.debug>2: print("\t"+str(vrep.occs())+":{"+','.join([str(x) for x in fvar])+"}"+" =?= "+"{{"+','.join([str(x)for x in fterms])+"}}" )
+                    if self.debug>3: print("\t"+str(vrep.occs())+":{"+','.join([str(x) for x in fvar])+"}"+" =?= "+"{{"+','.join([str(x)for x in fterms])+"}}" )
                     vrep.ts().extend(fterms)
                     if vrep.occs() == 0: self.var_reps.add(vrep)
                     self.tosolve.add(vrep)
                     self.solved.update([(v,vrep) for v in fvar if  v != vrep])
                 self.tosolve =set([Var.find(x) for x in self.tosolve])
-                if self.debug>2:
+                if self.debug>3:
                     print()
                     print("==========================================================")
             else:
-                if self.debug>2:
+                if self.debug>3:
                     print("==========================================================")
             steps+=1
 #If var_reps is empty and tosolve is not then we have a cycle
