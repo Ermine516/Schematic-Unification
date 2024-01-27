@@ -95,7 +95,7 @@ class MM(Solver):
                 if v!= Var.find(v):
                     self.solved.add((v,Var.find(v)))
         self.clear()
-        return dict(self.solved), None
+        return dict(self.solved), None, None
 
     def preprocess(self,problem):
         def insert(t):

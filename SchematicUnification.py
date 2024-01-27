@@ -20,7 +20,7 @@ class SchematicUnification:
         self.SchematicSubstitution = SchematicSubstitution
         if toUnif ==[] :
             toUnif = [ x(Idx(0))  for x in I.symbols]
-        self.subproblems = SubProblemStack(toUnif,debug)
+        self.subproblems = SubProblemStack(toUnif,SchematicSubstitution,debug)
 
 
     def unif(self,start_time=-1):
@@ -28,16 +28,17 @@ class SchematicUnification:
         self.SchSolver.setTime(start_time)
         while self.subproblems.Open():
             try:
-                solved, subp= self.unify_current()
+                solved, subp, recs= self.unify_current()
             except Solver.CycleException as e:
                  return e.handle(self.debug)
-            except Solver.ClashExeption as e:  return e.handle(self.debug)
+            except Solver.ClashExeption as e:  
+                return e.handle(self.debug)
             self.update_unifier(solved)
-            self.update_subproblems(subp)
+            self.update_subproblems(subp,recs)
             self.update()
         if self.debug >1: self.print_final_results()  
         if self.debug in [0,1]: print(f"\t unifiable --- {(time.time() - start_time)} seconds ---")
-
+        return True
 
     def unify_current(self):
         def updateRec(b):
@@ -54,14 +55,14 @@ class SchematicUnification:
         if self.debug>4:    
             print("Theta Unification:\n")
         
-        store, context = self.SchSolver.unify(current)
+        store, context,recs = self.SchSolver.unify(current)
         forUnifier = set(filter(lambda a: not a in store and not type(a[0]) is Rec, context))
 
         
         if self.debug>3: print("First-order Syntactic Unification:\n")
         self.foSolver.count = self.count
-        results , subprobs =self.foSolver.unify(set(map(updateRec2,context)))
-        return  forUnifier, store
+        results , subprobs, unused =self.foSolver.unify(set(map(updateRec2,context)))
+        return  forUnifier, store,recs
 
     def current(self):
         return self.subproblems.Top()
@@ -72,11 +73,10 @@ class SchematicUnification:
 
     def update_unifier(self,sol):
         if self.debug>3: self.print_unif_results(sol)
-        self.unifier.extend(len(self.subproblems),sol)
-
-    def update_subproblems(self,sub):
+        self.unifier.extend(len(self.subproblems),sol) 
+    def update_subproblems(self,sub,recs):
         if self.debug>3: self.print_sub_results(sub)
-        self.subproblems += SubProblem(sub)
+        self.subproblems += SubProblem(sub,recs)
     
     def print_unif_results(self,unif):
         print("Unifier of "+str(self.count)+":\n"+ ''.join(["\t"+str(x)+" <= "+str(y)+"\n" for x,y in unif])+"\n")

@@ -6,7 +6,7 @@ class ThetaUnification(Solver):
         def __init__(self,active,dom):
             self.active = active # Set of unification problems
             self.store = set() # Set of variable on left unification problems
-            self.dom = [x.name for x in dom] # Set of excluded variable symbols
+            self.dom = [x.name for x in dom] # Set of Domain variable symbols
             self.recursions = set()
             self.seen = set()
             self.seenTrans = set()
@@ -58,9 +58,7 @@ class ThetaUnification(Solver):
                 return True if type(y) is Rec and x.func.name == y.func.name else False
         def isFutureRelevant(x):
             for r in config.recursions:
-                 if x.vc in self.SchematicSubstitution.associated_classes[r.func.name].keys():
-                    minval = self.SchematicSubstitution.associated_classes[r.func.name][x.vc]
-                    if r.idx.number +minval <= x.idx: return True
+                 if self.SchematicSubstitution.isFutureRelevant(r,x): return True
             return False
         def existsseen(x,y):
             for p1,p2,p3 in config.seen:
@@ -165,5 +163,6 @@ class ThetaUnification(Solver):
             print()
         
         self.recursions=config.recursions
-        return config.store, config.active
+        return config.store, config.active, config.recursions
+
 

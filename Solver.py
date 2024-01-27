@@ -16,10 +16,10 @@ class Solver(ABC):
                 print()
                 print("symbol clash: ",self.lterm,set(self.rterm))
                 print()
-            else:
+            elif debug == 0:
                 print(f"\t Not unifiable --- {(time.time() - self.start_time)} seconds ---")
 
-            return None
+            return False
         pass
     class CycleException(Exception):
         def __init__(self,prob,addendum="",start_time=-1):
@@ -37,9 +37,9 @@ class Solver(ABC):
                         print(f"\t{x[0]} =?= {x[1]}")
                 print()
             
-            else:
+            elif debug == 0:
                 print(f"\t Not unifiable --- {(time.time() - self.start_time)} seconds ---")
-            return None
+            return False
         pass
     @abstractmethod
     def __init__(self,SchematicSubstitution=None,debug=0,start_time=-1):

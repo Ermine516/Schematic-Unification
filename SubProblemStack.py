@@ -4,21 +4,63 @@ import clingo.script
 class SubProblem:
     def __len__(self):
         return len(self.subproblem)
-        
-    def __init__(self,subproblem):        
+   
+    def __init__(self,subproblem,recs):
+        def getvars(t):
+            if type(t) is App:
+                ret=set()
+                for x in t.args: 
+                    ret.update(getvars(x))
+                return ret
+            elif type(t) is Var:
+                return set([t]) 
+            else:
+                return set()       
         self.subproblem = subproblem
         self.vars =set()
+        self.futurevars ={}
+        self.recs = recs
+        self.futureRel = set()
         self.cyclic = False
+        for x,y in subproblem:
+            self.vars.update(getvars(x))
+            self.vars.update(getvars(y))
+        for x in self.vars:
+            if not x.vc in self.futurevars.keys():
+                self.futurevars[x.vc] =  x 
+            if x.idx >self.futurevars[x.vc].idx: 
+                self.futurevars[x.vc] =  x 
+
+        
+
+
+
+
 
 class SubProblemStack:
     #clingoBasic = ["#show e/2.","#defined match/2.", "{ e(X,Y): varr(Y), varl(X)}.",":-  varr(Y), not e(_,Y).",":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."] #   ,":- e(X1,Y),e(X2,Y),X1!=X2.", ":- varl(X),recs(X),recs(Y),X!=Y, not e(X,Y)."
 
-    clingoBasic = ["#show e/2.","#defined match/2.", "1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."] #   ,":- e(X1,Y),e(X2,Y),X1!=X2.", ":- varl(X),recs(X),recs(Y),X!=Y, not e(X,Y)."
-    def __init__(self,prob,debug=0):
+    clingoBasic = ["#show e/2.","#defined futureRel/1.","#defined match/2.",":- e(X,Y),futureRel(X),not futureRel(Y). " ,":- e(X,Y),not futureRel(X), futureRel(Y). ",":- e(X,Y1), e(X,Y2), Y1!=Y2." ,":- other(X), not match(X,_)." , ":- tops(X), not match(_,X), not reflexive(X).","	reflexive(X):- X=(Y,W), varl(Y),varl(W), tops(X), e(Y,X),e(W,X)." ,"1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."] #   ,":- e(X1,Y),e(X2,Y),X1!=X2.", ":- varl(X),recs(X),recs(Y),X!=Y, not e(X,Y)."
+    def __init__(self,prob,dom,debug=0):
         self.cycle = -1
         self.mapping =None
         self.debug = debug
-        self.subproblems = [SubProblem(prob)]
+        self.dom = dom 
+        def getrecs(t):
+            if type(t) is App:
+                ret=set()
+                for x in t.args: 
+                    ret.update(getrecs(x))
+                return ret
+            elif type(t) is Rec:
+                return set([t]) 
+            else:
+                return set()  
+        recs=set()
+        for x,y in prob:
+            recs.update(getrecs(x))
+            recs.update(getrecs(y))
+        self.subproblems = [SubProblem(prob,recs)]
     
     def __len__(self):
         return len(self.subproblems)-1
@@ -29,6 +71,11 @@ class SubProblemStack:
         else:
             raise TypeError(f"Type of val is {type(val)} and should be SubProblem")
         return self
+    def futureOverlap(self,current,other):
+        for r in current.recs:
+            for vc,m in other.futurevars.items():
+                if self.dom.isFutureRelevant(r,m): return True
+        return False
     def Top(self):
         return  self.subproblems[-1]
     
@@ -39,14 +86,61 @@ class SubProblemStack:
 
     def extend(self,prob):
         self.subproblems.append(SubProblemNode(prob))
-
+    
+    
     def close(self):
+        def simplify(subp):
+            def applys(s,t):    
+                if type(t) is App:
+                    return t.func(*map(lambda x: applys(s,x),t.args))
+                elif type(t) is Var and t in s.keys():
+                    return Var(s[t].vc,s[t].idx)
+                elif type(t) is Var and not t in s.keys():
+                    return Var(t.vc,t.idx)
+                else:
+                    return Rec(t.func,t.idx)
+            def checkfur(y):
+                for r in subp.recs:
+                    if self.dom.isFutureRelevant(r,y): return True
+                return False
+            applysub = lambda s:lambda a: (applys(s,a[0]),applys(s,a[1]))
+            substitution ={}
+            grouping ={}
+            vars= set()
+            newsubp= []
+            furtureRelevant = set()
+            for x,y in subp.subproblem:
+                if type(x) is Var and type(y) is Var:
+                    check = True
+                    for g in grouping.keys():
+                        if x in grouping[g] or y in grouping[g]:
+                            grouping[g].update(set([x,y]))
+                            vars.add(x)
+                            vars.add(y)
+                            check = False
+                    if check:
+                        grouping[x]= set([x,y])
+                elif not type(x) is Var or not type(y) is Var:
+                    newsubp.append((x,y))
+            for x,y in grouping.items():
+                fr = False
+                for z in y: 
+                    if checkfur(x) or checkfur(z):
+                        fr = True
+                    substitution[z]=x
+                if fr:
+                    furtureRelevant.update(y)
+            newsubp = set(map(applysub(substitution), newsubp))
+            ret = SubProblem(newsubp,subp.recs)
+            ret.futureRel = furtureRelevant
+            return ret
+
         for x in reversed(range(0, len(self))):
             left = self.Top()
             right = self.subproblems[x]
-            if len(left) >= len(right) and x!=len(self) :#and len(self)>30:
+            if len(left) >= len(right) and x!=len(self) and not self.futureOverlap(left,right):#and len(self)>30:
                 if self.debug > 5: print(f"computing Subsumption between {x} and {len(self)}\n")
-                prog = self.computerEncoding(left,right)
+                prog = self.computerEncoding(simplify(left),simplify(right))
                 if prog:
                     if self.debug >5: print("Answer Set Program:\n\n\t"+'\n\t'.join(prog)+"\n")
                     return self.solverASP(prog,x)
@@ -70,6 +164,12 @@ class SubProblemStack:
         return False
         
     def computerEncoding(self,left,right):
+        # for x in left.subproblem:
+        #     print(x)
+        # print()
+        # for x in right.subproblem:
+        #     print(x)
+        if len(left) != len(right) : return None
         def compatibleTerms(x,y):
             if type(x) is App and type(y) is App and x.func.name ==y.func.name:
                 ret = set()
@@ -80,51 +180,47 @@ class SubProblemStack:
                 return ret
             elif not type(x) is App and not type(y) is App: return set([(x,y)])
             else: return None
-        def getvarsrecs(t):
-            if type(t) is App:
-                ret=set()
-                for x in t.args: 
-                    ret.update(getvarsrecs(x))
-                return ret
-            else:
-                return set([t])
 
         prog = []
         prog.extend(SubProblemStack.clingoBasic) 
         varsLeft =set()
         varsRight=set()
-        recs =set()
-        for p1 in left.subproblem:
+        recs =set(left.recs)
+        recs.update(right.recs)
+        tops =set()
+        other=set()
+        for p1 in right.subproblem:
             xt1,yt1 = p1
-            if type(xt1) is Rec: recs.add(xt1)
-            varsLeft.update(getvarsrecs(xt1))
-            varsLeft.update(getvarsrecs(yt1))
             validpairs={}
-            for p2 in right.subproblem:
+            other.add(p1)
+            for p2 in left.subproblem:
                 xt2,yt2 = p2
-                if type(xt2) is Rec: recs.add(xt2)
-                varsRight.update(getvarsrecs(xt2))
-                varsRight.update(getvarsrecs(yt2))
-                varMaps=compatibleTerms(yt1,yt2)
+                varMaps=compatibleTerms(yt2,yt1)
+                tops.add(p2)
                 if varMaps:
-                    varMaps.update(compatibleTerms(xt1,xt2))
+                    varMaps.update(compatibleTerms(xt2,xt1))
                     key = "match("+str(p1)+","+str(p2)+")"
-                    validpairs[key] = varMaps
+                    validpairs[key] = (f",other(Y), not match(Y,{str(p2)}), Y!={str(p1)}, not reflexive({str(p2)})",varMaps)
             if len(validpairs) !=0:
-                #prog.append("1{"+';'.join(validpairs.keys())+"}1.")
                 prog.append("{"+';'.join(validpairs.keys())+"}>=1.")
-                for pairing, map in validpairs.items():
+                for pairing, codemap in validpairs.items():
+                    code,map=codemap
                     for  xl,yl in map: 
-                        prog.append(f":- {pairing}, not e({repr(xl)},{repr(yl)}).")
-                    #prog.append(f":- not {pairing}, { ','.join(f"e({repr(xl)},{repr(yl)})" for xl,yl in map)}.")
+                        prog.append(f":- {pairing}, not e({repr(xl)},{repr(yl)}){code}.")
             else:
                 if self.debug >2: print("\t Subsumption failed on "+str(p1)+"\n")
                 return None
-        prog.append(''.join([f"varl({repr(y)})." for y in varsLeft ])) 
-        prog.append(''.join([f"varr({repr(y)})." for y in varsRight ]))
+        prog.append(''.join([f"varl({repr(y)})." for y in left.vars ])) 
+        prog.append(''.join([f"varl({repr(y)})." for y in left.recs ])) 
+        prog.append(''.join([f"varr({repr(y)})." for y in right.vars ]))
+        prog.append(''.join([f"varr({repr(y)})." for y in right.recs ]))
         prog.append(''.join([f"recs({repr(y)})." for y in recs ]))
+        prog.append(''.join([f"tops({repr(y)})." for y in tops ]))
+        prog.append(''.join([f"other({repr(y)})." for y in other ]))
+        prog.append(''.join([f"futureRel({repr(y)})." for y in left.futureRel ]))
+        prog.append(''.join([f"futureRel({repr(y)})." for y in right.futureRel ]))
 
-        return prog  
+        return prog #if completemapping == right.subproblem else None
 
 
     def print_closures(self):

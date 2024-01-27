@@ -41,6 +41,12 @@ class SchematicSubstitution:
         self.varsenum ={}
         self.revvarsenum ={}
         self.nesting = nesting
+
+    def isFutureRelevant(self,r,x):
+        if x.vc in self.associated_classes[r.func.name].keys():
+            minval = self.associated_classes[r.func.name][x.vc]
+            if r.idx.number +minval <= x.idx: return True
+        return False
     def add_relevent_vars(self,terms,clean=False):
         for x,y in self.varsenum.items():
             for t in terms:
