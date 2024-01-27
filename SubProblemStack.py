@@ -38,9 +38,13 @@ class SubProblem:
 
 
 class SubProblemStack:
-    #clingoBasic = ["#show e/2.","#defined match/2.", "{ e(X,Y): varr(Y), varl(X)}.",":-  varr(Y), not e(_,Y).",":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."] #   ,":- e(X1,Y),e(X2,Y),X1!=X2.", ":- varl(X),recs(X),recs(Y),X!=Y, not e(X,Y)."
-
-    clingoBasic = ["#show e/2.","#defined futureRel/1.","#defined match/2.",":- e(X,Y),futureRel(X),not futureRel(Y). " ,":- e(X,Y),not futureRel(X), futureRel(Y). ",":- e(X,Y1), e(X,Y2), Y1!=Y2." ,":- other(X), not match(X,_)." , ":- tops(X), not match(_,X), not reflexive(X).","	reflexive(X):- X=(Y,W), varl(Y),varl(W), tops(X), e(Y,X),e(W,X)." ,"1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."] #   ,":- e(X1,Y),e(X2,Y),X1!=X2.", ":- varl(X),recs(X),recs(Y),X!=Y, not e(X,Y)."
+    clingoBasic = ["#show e/2.","#defined futureRel/1.","#defined match/2.",\
+    ":- e(X,Y),futureRel(X),not futureRel(Y). " ,":- e(X,Y),not futureRel(X), futureRel(Y). ",\
+    ":- e(X,Y1), e(X,Y2), Y1!=Y2." ,":- other(X), not match(X,_)." ,\
+     ":- tops(X), not match(_,X), not reflexive(X).",\
+     "reflexive(X):- X=(Y,W), varl(Y),varl(W), tops(X), e(Y,X),e(W,X)." , \
+     "1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",\
+     ":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."]
     def __init__(self,prob,dom,debug=0):
         self.cycle = -1
         self.mapping =None
@@ -86,7 +90,6 @@ class SubProblemStack:
 
     def extend(self,prob):
         self.subproblems.append(SubProblemNode(prob))
-    
     
     def close(self):
         def simplify(subp):
@@ -138,12 +141,13 @@ class SubProblemStack:
         for x in reversed(range(0, len(self))):
             left = self.Top()
             right = self.subproblems[x]
-            if len(left) >= len(right) and x!=len(self) and not self.futureOverlap(left,right):#and len(self)>30:
+            # I don't think this is needed but it speeds things up :: len(left) >= len(right) and
+            if  x!=len(self) and not self.futureOverlap(left,right):
                 if self.debug > 5: print(f"computing Subsumption between {x} and {len(self)}\n")
                 prog = self.computerEncoding(simplify(left),simplify(right))
                 if prog:
                     if self.debug >5: print("Answer Set Program:\n\n\t"+'\n\t'.join(prog)+"\n")
-                    return self.solverASP(prog,x)
+                    if self.solverASP(prog,x): return True
         return False
     
     def solverASP(self,prog,subp):
@@ -164,12 +168,7 @@ class SubProblemStack:
         return False
         
     def computerEncoding(self,left,right):
-        # for x in left.subproblem:
-        #     print(x)
-        # print()
-        # for x in right.subproblem:
-        #     print(x)
-        if len(left) != len(right) : return None
+       # if len(left) < len(right) : return None # Probably not needed
         def compatibleTerms(x,y):
             if type(x) is App and type(y) is App and x.func.name ==y.func.name:
                 ret = set()
@@ -220,7 +219,7 @@ class SubProblemStack:
         prog.append(''.join([f"futureRel({repr(y)})." for y in left.futureRel ]))
         prog.append(''.join([f"futureRel({repr(y)})." for y in right.futureRel ]))
 
-        return prog #if completemapping == right.subproblem else None
+        return prog 
 
 
     def print_closures(self):

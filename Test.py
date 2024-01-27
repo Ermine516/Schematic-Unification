@@ -20,5 +20,5 @@ class Test:
                 unif, mappings= tp.parse_input(f.readlines())
                 for m in mappings:I.add_mapping(*m)
                 su = SchematicUnification(I,-1,unif)
-                ret = su.unif(time.time())
-                print(f"Test {str(i)} {"Passed" if ret == isunif[i]  else "Failed" }")
+                worked, tottime = su.unif(time.time())
+                print(f"Test {str(i)} {"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)} Seconds")
