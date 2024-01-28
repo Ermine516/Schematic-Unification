@@ -15,7 +15,6 @@ def parsing_CMD():
         parser.add_argument('procedure', choices=['Test','Unif'], help='Currently either Test or Unification')
         parser.add_argument('-f',metavar="file.su", default="",help='The unification problem to Solve. Igored when in Test mode')
         parser.add_argument('--debug',metavar="int",type=int,choices=[-1,0,1,2,3,4,5,6],default=1,help='Debug level: 0 is the lowest and 3 is the highest.')
-       # parser.add_argument('--unifier',default=False,action='store_true',help='Experimental: Computes the unifier.')
 
         return  parser.parse_args()
 def unify():
@@ -25,7 +24,7 @@ def unify():
         with open(args.f) as f:
             try:
                 unif, mappings= tp.parse_input(f.readlines())
-                for m in mappings:I.add_mapping(*m)
+                for m in mappings.items():I.add_mapping(*m)
                 for u in unif:  I.add_relevent_vars(u)
             except ArityMismatchException as e:
                 e.handle()
@@ -45,10 +44,16 @@ def unify():
             except SchematicSubstitution.InvalidRecursionException as e:
                 e.handle()
                 return None
+            except OutofOrderInputException as e:
+                e.handle()
+                return None    
             except nonlinearinputException as e:
+                return None  
+            except nonPrimitiveinputException as e:
                 return None
-                
-            
+            except MappingReAssignmentException as e:
+                e.handle()
+                return None
             su = SchematicUnification(I,args.debug,unif)
             start_time = time.time()
             su.unif(time.time())

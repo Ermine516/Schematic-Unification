@@ -3,14 +3,33 @@ from Term import *
 import re
 
 
+class MappingReAssignmentException(Exception):
+    def __init__(self,m1,m2):
+        self.m1=m1
+        self.m2=m2
+        pass
+    def handle(self):
+        print("Each Interpreted Variable should only have one mapping:")
+        print("\t",self.m1[0].name,self.m1[1])
+        print("\t",self.m2[0].name,self.m2[1])
+        return None
+
+class nonPrimitiveinputException(Exception):
+    def __init__(self):
+        pass
+    def handle(self):
+        print("The input schematic substitution is non-primitive. The algorithm is designed for primitive schematic substitutions only.\
+         Using a non-primitive schematic subsitutions my lead to non-termination.\n To continue type OK and Press Enter.")
+        x = input()
+        return False if x.lower() =="ok" else True
 class nonlinearinputException(Exception):
-    def __init__(self,mappings):
-        self.mappings = mappings
+    def __init__(self):
+        pass
     def handle(self):
         print("The input schematic substitution is non-linear. The algorithm is designed for linear schematic substitutions only.\
-         Using a non-linear schematic subsitutions my lead to non-termination.\n Press Enter to Continue.")
-        key = input()
-        return True
+        Using a non-linear schematic subsitutions my lead to non-termination.\n To continue type OK and Press Enter.")
+        x = input()
+        return False if x.lower() =="ok" else True
 class noUnificationProblemException(Exception):
     def __init__(self):
         pass
@@ -71,9 +90,11 @@ class TermParser:
         self.found_vars = {}
         self.found_symbols = {}
         self.found_rec = {}
+        self.check_primitive = {}
         self.symbols = {}
         self.unif =set()
-        self.mappings =[]
+        self.mappings ={}
+        self.mapNames=set()
         self.EndofUnification=False
         self.term_construct = Forward()
         self.variable_symbol = (Word(alphas)+Suppress("[")+Word(nums)+Suppress("]")).set_parse_action(self.make_var)
@@ -92,7 +113,8 @@ class TermParser:
     def comment(self,s,loc,toks):
         return None
     def badInput(self,s,loc,toks):
-        raise unknownInputException(s)
+        if not re.match(r'\s+',s):
+            raise unknownInputException(s)
         return None
     def add_unification_problem(self,s,loc,toks):
         if self.EndofUnification: raise OutofOrderInputException()
@@ -100,7 +122,11 @@ class TermParser:
         return None
     def add_mapping_problem(self,s,loc,toks):
         self.EndofUnification=True
-        self.mappings.append(tuple(toks))
+        if toks[0] in self.mappings.keys():
+            raise MappingReAssignmentException(toks,(toks[0],self.mappings[toks[0]]))
+        else:
+            self.mappings[toks[0]]= toks[1]
+        self.mapNames.add(toks[0].name)
         return None
     def is_interpreted(self,s,loc,toks):
         if not toks[0] in self.found_rec.keys():
@@ -127,7 +153,6 @@ class TermParser:
     def make_function(self,s,loc,toks):
         if not toks[0] in self.symbols.keys(): self.symbols[toks[0]] = App
         elif self.symbols[toks[0]] != App: 
-            print(s)
             raise SymbolTypeMisMatchException(toks[0],self.symbols[toks[0]],App)
         if not toks[0] in self.found_symbols.keys():self.found_symbols[toks[0]] = Func(toks[0],len(toks)-1)
         elif self.found_symbols[toks[0]].arity!=len(toks)-1: raise  ArityMismatchException(self.found_symbols[toks[0]],self.found_symbols[toks[0]].arity,len(toks)-1)
@@ -138,19 +163,27 @@ class TermParser:
         elif self.symbols[toks[0]] != Rec: 
             raise  SymbolTypeMisMatchException(toks[0],self.symbols[toks[0]],Rec)
         if not toks[0] in self.found_rec.keys():self.found_rec[toks[0]] =Func(toks[0],1)
+        if "<==" in s:
+            if not toks[0] in self.check_primitive.keys():
+                self.check_primitive[toks[0]]= set([int(toks[1])])
+            else:
+                self.check_primitive[toks[0]].add(int(toks[1]))
         return self.found_rec[toks[0]](Idx(int(toks[1])))
 
     def parse_input(self,input):
         for l in input:
-            if not re.match('\\s+',l): 
-                self.line.parseString(l)
+            self.line.parseString(l)
         if len(self.unif) == 0: raise noUnificationProblemException()
-        test=[ l.name for l,r in self.mappings]
         for x in self.found_rec.keys():
-            if not x in test:
-                raise UndefinedInterpretedException(x)
+            if not x in self.mapNames: raise UndefinedInterpretedException(x)
         try:       
-            if  len(test)>1: raise nonlinearinputException(test)
+            if  len(self.mapNames)>1: raise nonlinearinputException()
         except nonlinearinputException as e:
-                if e.handle(): pass
+                if e.handle(): raise nonlinearinputException()         
+        try:
+            for x,y in self.check_primitive.items():
+                if len(y)>1: raise nonPrimitiveinputException()   
+        except nonPrimitiveinputException as e:
+                if e.handle(): raise nonlinearinputException()
+
         return (self.unif,self.mappings)
