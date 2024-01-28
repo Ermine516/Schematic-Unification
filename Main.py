@@ -25,6 +25,8 @@ def unify():
         with open(args.f) as f:
             try:
                 unif, mappings= tp.parse_input(f.readlines())
+                for m in mappings:I.add_mapping(*m)
+                for u in unif:  I.add_relevent_vars(u)
             except ArityMismatchException as e:
                 e.handle()
                 return None
@@ -34,9 +36,19 @@ def unify():
             except UndefinedInterpretedException as e:
                 e.handle()
                 return None
-            for m in mappings:I.add_mapping(*m)
-            for u in unif:
-                I.add_relevent_vars(u)
+            except unknownInputException as e:
+                e.handle()
+                return None
+            except noUnificationProblemException as e:
+                e.handle()
+                return None
+            except SchematicSubstitution.InvalidRecursionException as e:
+                e.handle()
+                return None
+            except nonlinearinputException as e:
+                return None
+                
+            
             su = SchematicUnification(I,args.debug,unif)
             start_time = time.time()
             su.unif(time.time())
