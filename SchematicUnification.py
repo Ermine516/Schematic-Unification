@@ -18,7 +18,7 @@ class SchematicUnification:
         self.unifier = Unifier()
         self.count = 0
         self.SchematicSubstitution = SchematicSubstitution
-        if toUnif ==[] :
+        if toUnif ==[]:
             toUnif = [ x(Idx(0))  for x in I.symbols]
         self.subproblems = SubProblemStack(toUnif,SchematicSubstitution,debug)
 
@@ -76,7 +76,7 @@ class SchematicUnification:
         self.unifier.extend(len(self.subproblems),sol) 
     def update_subproblems(self,sub,recs):
         if self.debug>3: self.print_sub_results(sub)
-        self.subproblems += SubProblem(sub,recs)
+        self.subproblems += SubProblem(sub)
     
     def print_unif_results(self,unif):
         print("Unifier of "+str(self.count)+":\n"+ ''.join(["\t"+str(x)+" <= "+str(y)+"\n" for x,y in unif])+"\n")

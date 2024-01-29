@@ -61,9 +61,6 @@ class Var(Term):
              x.size, x.occ = x.size+y.size,x.occ+y.occ
 #moves the right side of the multiequation to the representative
              x.terms.extend(y.terms)
-             for c in y.maxsub.keys():
-                 if not c in x.maxsub.keys(): x.maxsub[c]=0
-                 x.maxsub[c] = max(x.maxsub[c],y.maxsub[c])
 #Resets the non-rep
              y.rep,y.terms, y.occ =x,[],0
          return x
@@ -73,17 +70,12 @@ class Var(Term):
             return x
         else:
             return x
-    def clean(self,active):
-        self.terms = []
-        self.occ = 0
-        self.active = active
 
     def reset(self):
         self.rep = self
         self.size =1
         self.terms = []
         self.occ = 0
-        self.active = False
 
     def vclass(self):
         return Var.find(self).vc
@@ -95,8 +87,7 @@ class Var(Term):
         return Var.find(self).occ
     def setocc(self,i):
         Var.find(self).occ = Var.find(self).occ+i
-    def act(self):
-        return Var.find(self).active
+
 
     def __init__(self, vc,idx,active = False):
         self.vc = vc
@@ -106,10 +97,8 @@ class Var(Term):
         self.size =1
         self.terms = []
         self.occ = 0
-        self.active=active
+
 #We need to remember the largest subordinate class.
-        self.maxsub = {}
-        self.maxsub[vc]= idx
 
     def format(self):
         return str(Var.find(self).occ)+":{" +self.__str__()+"}"+" =?= "+"{{"+','.join([str(t) for t in self.ts()])+"}}"

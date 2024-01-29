@@ -1,0 +1,7 @@
+## This example is simple and primitive but runs forever,
+## even though it is unifiable 
+
+L_0 =?= R_1
+
+L <== h(X[0],h(X[1],h(X[2],L_1)))
+R <== h(Y[0],R_1)

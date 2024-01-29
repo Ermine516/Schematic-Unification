@@ -62,33 +62,28 @@ class ThetaUnification(Solver):
             return False
         def existsseen(x,y):
             for p1,p2,p3 in config.seen:
-                if  p2==x and p3==y: return True #isTerm(p1) and
+                if  p2==x and p3==y: return True
             return False
 
-        
-
-    #Checks useful for the unification procedure
+#Checks useful for the unification procedure
         isTerm = lambda a: not type(a) is Var and not type(a) is Rec
         isVarRec =lambda a:  type(a) is Var or  type(a) is Rec
         isRec = lambda a: type(a) is Rec
         isVar = lambda a: type(a) is Var
         unseen = lambda a: not a in config.seen
         stored = lambda a: a in config.store
-
-    #Conditions for rules
+#Conditions for rules
+        delete = lambda x,y: isTerm(x) and existsseen(x,y)
         decomposition = lambda x,y:  unseen((x,x,y)) and isTerm(x) and isTerm(y) and x.func.name == y.func.name
         orient1 = lambda x,y: x!=y and (isVarRec(y) and isTerm(x)) and unseen((x,x,y))
         orient2 = lambda x,y: x!=y and isVarRec(x) and isVarRec(y) and not (y,x) in config.active
-        transitivity = lambda x,y: lambda a: x!= a[1] and x!= y and a[0]==x and y!=a[1] and unseen((x,a[1],y)) and unseen((x,y,a[1])) 
-        delete = lambda x,y: isTerm(x) and existsseen(x,y)
+        clash = lambda x,y:  isTerm(x) and isTerm(y)  and x.func.name != y.func.name
         store_T_R= lambda x,y: x != y and isVar(x) and  not stored((x,y)) and isRelevant((x,y))
         store_T_D= lambda x,y: isRec(x) and  not  isVar(y) and x != y and not stored((x,y))
-        store_T_F= lambda x,y: x != y and isVar(x) and  not stored((x,y)) and isFutureRelevant(x) #and (isFutureRelevant(y) if  isVar(y) else True ) 
+        store_T_F= lambda x,y: x != y and isVar(x) and  not stored((x,y)) and isFutureRelevant(x)
+        transitivity = lambda x,y: lambda a: x!= a[1] and x!= y and a[0]==x and y!=a[1] and unseen((x,a[1],y)) and unseen((x,y,a[1])) 
 
-        clash = lambda x,y:  isTerm(x) and isTerm(y)  and x.func.name != y.func.name
-
-    # Checks whether the given binding 'a' is relevent to the binding stored in the configuration
-        #relevantCheck = lambda a: (lambda b,c: b or  ( a[0].occurs(c[1]) and isTerm(a[1]) ) or (not type(a[0]) is Rec and a[0]==c[0])) 
+# Checks whether the given binding 'a' is relevent to the binding stored in the configuration
         relevantCheck = lambda a: (lambda b,c: b or a[0].occurs(c[1]) or a[1].occurs(c[0]) or (not type(a[0]) is Rec and a[0]==c[0])) 
         isRelevant = lambda a: reduce(relevantCheck(a),config.store,False)  
 
@@ -159,9 +154,7 @@ class ThetaUnification(Solver):
             config.active = set(filter(lambda a: not a in toRemove, config.active))
             config.active.update(updates)
         
-        if self.debug>4: 
-            print()
-        
+        if self.debug>4: print()
         self.recursions=config.recursions
         return config.store, config.active, config.recursions
 
