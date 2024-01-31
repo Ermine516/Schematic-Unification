@@ -3,6 +3,14 @@ from Term import *
 import re
 
 
+class NonBasicInputException(Exception):
+    def __init__(self):
+        pass
+    def handle(self):
+        print("The input schematic substitution is non-basic. The algorithm is designed for basic schematic substitutions only. Using a non-basic schematic subsitutions may lead to non-termination.\n To continue type OK and Press Enter.")
+        x = input()
+        return False if x.lower() =="ok" else True
+
 class MappingReAssignmentException(Exception):
     def __init__(self,m1,m2):
         self.m1=m1
@@ -18,16 +26,14 @@ class nonPrimitiveinputException(Exception):
     def __init__(self):
         pass
     def handle(self):
-        print("The input schematic substitution is non-primitive. The algorithm is designed for primitive schematic substitutions only.\
-         Using a non-primitive schematic subsitutions my lead to non-termination.\n To continue type OK and Press Enter.")
+        print("The input schematic substitution is non-primitive. The algorithm is designed for primitive schematic substitutions only. Using a non-primitive schematic subsitutions may lead to non-termination.\n To continue type OK and Press Enter.")
         x = input()
         return False if x.lower() =="ok" else True
 class nonlinearinputException(Exception):
     def __init__(self):
         pass
     def handle(self):
-        print("The input schematic substitution is non-linear. The algorithm is designed for linear schematic substitutions only.\
-        Using a non-linear schematic subsitutions my lead to non-termination.\n To continue type OK and Press Enter.")
+        print("The input schematic substitution is non-linear. The algorithm is designed for linear schematic substitutions only. Using a non-linear schematic subsitutions may lead to non-termination.\n To continue type OK and Press Enter.")
         x = input()
         return False if x.lower() =="ok" else True
 class noUnificationProblemException(Exception):
@@ -169,6 +175,16 @@ class TermParser:
             else:
                 self.check_primitive[toks[0]].add(int(toks[1]))
         return self.found_rec[toks[0]](Idx(int(toks[1])))
+    def basic(self,t):
+        if type(t) is App:
+            for x in t.args:
+                if not self.basic(x): return False 
+            return True
+        elif type(t) is Var:
+            return True
+        elif type(t) is Rec:
+            if t.func in self.found_rec.values() and t.idx.number != 0: return False
+            else: return True
 
     def parse_input(self,input):
         for l in input:
@@ -184,6 +200,11 @@ class TermParser:
             for x,y in self.check_primitive.items():
                 if len(y)>1: raise nonPrimitiveinputException()   
         except nonPrimitiveinputException as e:
-                if e.handle(): raise nonlinearinputException()
+                if e.handle(): raise nonPrimitiveinputException()
+        try:
+            for x,y in self.unif:
+                if not self.basic(x) or not self.basic(y): raise NonBasicInputException()   
 
+        except NonBasicInputException as e:
+                if e.handle(): raise NonBasicInputException()
         return (self.unif,self.mappings)
