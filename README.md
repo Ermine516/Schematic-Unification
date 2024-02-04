@@ -9,6 +9,30 @@ To run the test suite, use the following command:
 
 	python Main.py Test
 
+The output should be roughly as follows: 
+	Test 1 Passed -- 0.008 Seconds
+	Test 2 Passed -- 0.005 Seconds
+	Test 3 Passed -- 0.04 Seconds
+	Test 4 Passed -- 0.055 Seconds
+	Test 5 Passed -- 1.215 Seconds
+	Test 6 Passed -- 7.937 Seconds
+	Test 7 Passed -- 0.007 Seconds
+	Test 8 Passed -- 0.295 Seconds
+	Test 9 Passed -- 0.272 Seconds
+	Test 10 Passed -- 0.107 Seconds
+	Test 11 Passed -- 0.079 Seconds
+	Test 12 Passed -- 0.028 Seconds
+	Test 13 Passed -- 0.094 Seconds
+	Test 14 Passed -- 0.007 Seconds
+	Test 15 Passed -- 0.039 Seconds
+	Test 16 Passed -- 0.029 Seconds
+	Test 17 Passed -- 0.022 Seconds
+	Test 18 Passed -- 0.001 Seconds
+	Test 19 Passed -- 0.016 Seconds
+	Test 20 Passed -- 0.003 Seconds
+	Test 21 Passed -- 0.002 Seconds
+	Test 22 Passed -- 0.007 Seconds
+
 Below is an example of how to run the code on one of the example files: 
 
 	python Main.py Unif -f Examples/tests/test7.su --debug=2
@@ -49,8 +73,8 @@ This is the cycle found during search together with the mapping from problem 13 
 		X[5] =?= X[3]
 		Z[3] =?= Z[5]
 
-These are the the problems which are subsumptively equivalent. Below are all the bindings which 
-did not end up in a subproblem:
+These are the the problems which are equivalent. Below are all the bindings which 
+did not end up in a subproblem (irrelevant bindings):
 
 	Computed Bindings for subproblem 0:
 
@@ -111,7 +135,7 @@ did not end up in a subproblem:
 		X[5] <= X[3]
 
 
-The debug level can be set to a number between 0 and 3. Running without debug results in level 0 debugging:
+The debug level can be set to a number between -1 and 6. Running without debug results in level 0 debugging:
 
 	python Main.py Unif -f Examples/tests/test7.su 
 
