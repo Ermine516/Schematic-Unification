@@ -16,7 +16,7 @@ class Unifier:
                 self.local_unifiers[idx][x.vc] = {}
             self.global_unifier[x.vc][x.idx]=(x,y)
             self.local_unifiers[idx][x.vc][x.idx]=(x,y)
-            x.clean(False)
+            x.reset()
 
     def binding(self,v,i):
         try:

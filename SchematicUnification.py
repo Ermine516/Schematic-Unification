@@ -18,9 +18,9 @@ class SchematicUnification:
         self.unifier = Unifier()
         self.count = 0
         self.SchematicSubstitution = SchematicSubstitution
-        if toUnif ==[] :
+        if toUnif ==[]:
             toUnif = [ x(Idx(0))  for x in I.symbols]
-        self.subproblems = SubProblemStack(toUnif,debug)
+        self.subproblems = SubProblemStack(toUnif,SchematicSubstitution,debug)
 
 
     def unif(self,start_time=-1):
@@ -28,16 +28,17 @@ class SchematicUnification:
         self.SchSolver.setTime(start_time)
         while self.subproblems.Open():
             try:
-                solved, subp= self.unify_current()
+                solved, subp, recs= self.unify_current()
             except Solver.CycleException as e:
                  return e.handle(self.debug)
-            except Solver.ClashExeption as e:  return e.handle(self.debug)
+            except Solver.ClashExeption as e:  
+                return e.handle(self.debug)
             self.update_unifier(solved)
-            self.update_subproblems(subp)
+            self.update_subproblems(subp,recs)
             self.update()
         if self.debug >1: self.print_final_results()  
-        if self.debug in [0,1]: print(f"\t unifiable --- {(time.time() - start_time)} seconds ---")
-
+        if self.debug in [0,1]: print(f"\t unifiable --- {round(time.time() - start_time,3)} seconds ---")
+        return True , (time.time() - start_time)
 
     def unify_current(self):
         def updateRec(b):
@@ -51,17 +52,17 @@ class SchematicUnification:
         if self.debug>2 or (self.count==0 and self.debug>0): 
             self.print_current_problem(self.current().subproblem)
             print()
-        if self.debug>2:    
+        if self.debug>4:    
             print("Theta Unification:\n")
         
-        store, context = self.SchSolver.unify(current)
+        store, context,recs = self.SchSolver.unify(current)
         forUnifier = set(filter(lambda a: not a in store and not type(a[0]) is Rec, context))
 
         
-        if self.debug>2: print("First-order Syntactic Unification:\n")
+        if self.debug>3: print("First-order Syntactic Unification:\n")
         self.foSolver.count = self.count
-        results , subprobs =self.foSolver.unify(set(map(updateRec2,context)))
-        return  forUnifier, store
+        results , subprobs, unused =self.foSolver.unify(set(map(updateRec2,context)))
+        return  forUnifier, store,recs
 
     def current(self):
         return self.subproblems.Top()
@@ -71,18 +72,17 @@ class SchematicUnification:
         self.count+=1
 
     def update_unifier(self,sol):
-        if self.debug>2: self.print_unif_results(sol)
-        self.unifier.extend(len(self.subproblems),sol)
-
-    def update_subproblems(self,sub):
-        if self.debug>2: self.print_sub_results(sub)
+        if self.debug>3: self.print_unif_results(sol)
+        self.unifier.extend(len(self.subproblems),sol) 
+    def update_subproblems(self,sub,recs):
+        if self.debug>3: self.print_sub_results(sub)
         self.subproblems += SubProblem(sub)
     
     def print_unif_results(self,unif):
         print("Unifier of "+str(self.count)+":\n"+ ''.join(["\t"+str(x)+" <= "+str(y)+"\n" for x,y in unif])+"\n")
 
     def print_final_results(self):
-        self.subproblems.print_closures()
+        result =self.subproblems.print_closures()
         print()
         for x in range(0,len(self.subproblems)):
             print("Computed Bindings for subproblem "+str(x)+":\n"+ ''.join(["\t"+str(y)+" <= "+str(z)+"\n" for y,z in self.unifier.local_bindings(x)])+"\n")

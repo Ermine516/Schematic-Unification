@@ -1,21 +1,25 @@
 from Term import *
 import clingo
 import clingo.script
-class SubProblem:
-    def __len__(self):
-        return len(self.subproblem)
+from SubProblem import *
         
-    def __init__(self,subproblem):        
-        self.subproblem = subproblem
-        self.vars =set()
-        self.cyclic = False
 
 class SubProblemStack:
-    clingoBasic = ["#show e/2.", "1{ e(X,Y): varr(Y)}1:- varl(X)." ":- e(X1,Y),e(X2,Y),X1!=X2."]
-    def __init__(self,prob,debug=0):
+# Base ASP program
+    
+    clingoBasic = ["#show e/2.","#defined futureRel/1.","#defined match/2.",\
+    ":- e(X,Y),futureRel(X),not futureRel(Y). " ,":- e(X,Y),not futureRel(X), futureRel(Y). ",\
+    ":- e(X,Y1), e(X,Y2), Y1!=Y2." ,":- other(X), not match(X,_)." ,\
+     ":- tops(X), not match(_,X).",\
+     "1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",\
+     ":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."]
+
+    def __init__(self,prob,dom,debug=0):
         self.cycle = -1
         self.mapping =None
         self.debug = debug
+        self.dom = dom 
+        
         self.subproblems = [SubProblem(prob)]
     
     def __len__(self):
@@ -27,6 +31,11 @@ class SubProblemStack:
         else:
             raise TypeError(f"Type of val is {type(val)} and should be SubProblem")
         return self
+    def futureOverlap(self,current,other):
+        for r in current.recs:
+            for vc,m in other.futurevars.items():
+                if self.dom.isFutureRelevant(r,m): return True
+        return False
     def Top(self):
         return  self.subproblems[-1]
     
@@ -34,20 +43,17 @@ class SubProblemStack:
         if self.close(): return None
         else: 
             return self.Top()
-
-    def extend(self,prob):
-        self.subproblems.append(SubProblemNode(prob))
-
+    
     def close(self):
         for x in reversed(range(0, len(self))):
             left = self.Top()
             right = self.subproblems[x]
-            if len(left) == len(right) and x!=len(self):
-                if self.debug > 2: print(f"computing Subsumption between {x} and {len(self)}\n")
-                prog = self.computerEncoding(left,right)
+            if  x!=len(self) and not self.futureOverlap(left,right):
+                if self.debug > 5: print(f"computing Subsumption between {x} and {len(self)}\n")
+                prog = self.computerEncoding(left.simplify(self.dom),right.simplify(self.dom))
                 if prog:
-                    if self.debug >3: print("Answer Set Program:\n\n\t"+'\n\t'.join(prog)+"\n")
-                    return self.solverASP(prog,x)
+                    if self.debug >5: print("Answer Set Program:\n\n\t"+'\n\t'.join(prog)+"\n")
+                    if self.solverASP(prog,x): return True
         return False
     
     def solverASP(self,prog,subp):
@@ -78,36 +84,51 @@ class SubProblemStack:
                 return ret
             elif not type(x) is App and not type(y) is App: return set([(x,y)])
             else: return None
+
         prog = []
         prog.extend(SubProblemStack.clingoBasic) 
         varsLeft =set()
         varsRight=set()
-        for p1 in left.subproblem:
+        recs =set(left.recs)
+        recs.update(right.recs)
+        tops =set()
+        other=set()
+        for p1 in right.subproblem:
             xt1,yt1 = p1
             validpairs={}
-            for p2 in right.subproblem:
+            other.add(p1)
+            for p2 in left.subproblem:
                 xt2,yt2 = p2
-                varMaps=compatibleTerms(yt1,yt2)
+                varMaps=compatibleTerms(yt2,yt1)
+                tops.add(p2)
                 if varMaps:
-                    varMaps.update(compatibleTerms(xt1,xt2))
+                    varMaps.update(compatibleTerms(xt2,xt1))
                     key = "match("+str(p1)+","+str(p2)+")"
-                    validpairs[key] = varMaps
+                    validpairs[key] = (f",other(Y), not match(Y,{str(p2)}), Y!={str(p1)}",varMaps)
             if len(validpairs) !=0:
-                prog.append("1{"+';'.join(validpairs.keys())+"}1.")
-                for pairing, map in validpairs.items():
+                prog.append("{"+';'.join(validpairs.keys())+"}>=1.")
+                for pairing, codemap in validpairs.items():
+                    code,map=codemap
                     for  xl,yl in map: 
-                        prog.append(f":- {pairing}, not e({repr(xl)},{repr(yl)}).")
-                        varsLeft.add(xl)
-                        varsRight.add(yl)
+                        prog.append(f":- {pairing}, not e({repr(xl)},{repr(yl)}){code}.")
             else:
                 if self.debug >2: print("\t Subsumption failed on "+str(p1)+"\n")
                 return None
-        prog.append(''.join([f"varl({repr(y)})." for y in varsLeft ])) 
-        prog.append(''.join([f"varr({repr(y)})." for y in varsRight ]))
-        return prog  
+        prog.append(''.join([f"varl({repr(y)})." for y in left.vars ])) 
+        prog.append(''.join([f"varl({repr(y)})." for y in left.recs ])) 
+        prog.append(''.join([f"varr({repr(y)})." for y in right.vars ]))
+        prog.append(''.join([f"varr({repr(y)})." for y in right.recs ]))
+        prog.append(''.join([f"recs({repr(y)})." for y in recs ]))
+        prog.append(''.join([f"tops({repr(y)})." for y in tops ]))
+        prog.append(''.join([f"other({repr(y)})." for y in other ]))
+        prog.append(''.join([f"futureRel({repr(y)})." for y in left.futureRel ]))
+        prog.append(''.join([f"futureRel({repr(y)})." for y in right.futureRel ]))
+
+        return prog 
 
 
     def print_closures(self):
+        if self.mapping:
             print("Recursion Found "+str(len(self))+" => "+str(self.cycle)+ " {"+ ' , '.join([f"{x}=>{y}" for x,y in self.mapping]) +"}")
             print()
             print("Subproblem "+str(len(self))+":")
@@ -118,3 +139,7 @@ class SubProblemStack:
             for x,y in self.subproblems[self.cycle].subproblem:
                 print(f"\t{x} =?= {y}") 
             print()
+            return True
+        else:
+            print("Non-Recursive, Finitely Unifiable.")
+            return False

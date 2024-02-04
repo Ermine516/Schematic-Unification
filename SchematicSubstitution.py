@@ -14,7 +14,7 @@ class SchematicSubstitution:
             self.c= c
         def handle(self):
             print()
-            print("Invalid Recursion: the interpreted class ",self.w+" .occs()ured in the definition of the iterpreted class "+self.c)
+            print("Invalid Recursion: the interpreted class ",self.w+" occured in the definition of the iterpreted class "+self.c)
             return None
     class ClassOverlapException(Exception):
         def __init__(self,c1,c2,m):
@@ -41,6 +41,12 @@ class SchematicSubstitution:
         self.varsenum ={}
         self.revvarsenum ={}
         self.nesting = nesting
+
+    def isFutureRelevant(self,r,x):
+        if x.vc in self.associated_classes[r.func.name].keys():
+            minval = self.associated_classes[r.func.name][x.vc]
+            if r.idx.number +minval <= x.idx: return True
+        return False
     def add_relevent_vars(self,terms,clean=False):
         for x,y in self.varsenum.items():
             for t in terms:
@@ -55,13 +61,8 @@ class SchematicSubstitution:
                 self.add_relevent_vars_helper(rec,t)
     def add_mapping(self,sym,term,clean=False):
         if sym.arity != 1: raise InvalidFunctionException(sym)
-        try:
-            self.associated_classes[sym.name] = {}
-            self.extractclasses(sym.name,term)
-        except SchematicSubstitution.InvalidRecursionException as e:
-            self.associated_classes.pop(sym.name)
-            e.handle()
-            return
+        self.associated_classes[sym.name] = {}
+        self.extractclasses(sym.name,term)
         self.symbols.append(sym)
         class_groups = list(map(lambda a: (a,set(self.associated_classes[a].keys())),self.associated_classes.keys()))
         while len(class_groups)!= 0:
@@ -116,7 +117,6 @@ class SchematicSubstitution:
                 self.associated_classes[sym][term.vc] = min(term.idx,self.associated_classes[sym][term.vc])
         elif type(term) is App:
             term.inducApp(lambda a:self.extractclasses(sym,a))
-#The code below stops nested recursion.
         elif not self.nesting and type(term) is Rec:
             if term.func.name != sym:
                 raise self.InvalidRecursionException(term.func.name,sym)
