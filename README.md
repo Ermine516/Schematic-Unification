@@ -1,5 +1,5 @@
 # Schematic-Unification
-The code in this repository implements a unification procedure for Linear Primitive Schematic Unification (See https://arxiv.org/abs/2306.09152).  The implemented algorithm Non-linear Non-primitive schematic unification problems as input (though the bindings of the schematic substitutions cannot refer to each other). However, the algorithm  is only proven to work for linear primitive problems. The code requires the following libraries (for the full list see Requirements.txt):
+The code in this repository implements a unification procedure for primitive schematic unification similar to the algorithm presented in https://arxiv.org/abs/2306.09152. We are currently in the process of implementing the precise algorithm presented in the paper which works for non-linear uniform schematic unification problems as well (though the bindings of the schematic substitutions cannot refer to each other). The code requires the following libraries (for the full list see Requirements.txt):
 
 	pyparsing 3.0.9 
 
