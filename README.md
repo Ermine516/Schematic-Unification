@@ -10,6 +10,7 @@ To run the test suite, use the following command:
 	python Main.py Test
 
 The output should be roughly as follows: 
+
 	Test 1 Passed -- 0.008 Seconds
 	Test 2 Passed -- 0.005 Seconds
 	Test 3 Passed -- 0.04 Seconds
