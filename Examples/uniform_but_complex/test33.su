@@ -1,0 +1,7 @@
+## Fails to terminate because normalization is not implemented. 
+## Will be fixed in the future. 
+
+L_0 =?= R_1
+
+L <== h(X[0],h(X[1],h(X[2],L_1)))
+R <== h(Y[0],R_1)
