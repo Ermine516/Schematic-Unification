@@ -24,6 +24,8 @@ class SchematicSubstitution:
         def handle(self):
             print()
             print("The definitions of "+str(self.c1)+" and "+str(self.c2)+"overlap:\n"+str(self.mappings[self.c1])+"\n"+str(self.mappings[self.c2]))
+            print("""The current implementation is designed for non-overlapping definitions.""")
+
             return None
 
     def __init__(self,nesting=False):

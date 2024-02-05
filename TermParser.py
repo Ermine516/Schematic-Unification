@@ -7,7 +7,11 @@ class NonBasicInputException(Exception):
     def __init__(self):
         pass
     def handle(self):
-        print("The input schematic substitution is non-basic. The algorithm is designed for basic schematic substitutions only. Using a non-basic schematic subsitutions may lead to non-termination.\n To continue type OK and Press Enter.")
+        print("""The input unification equations contains instances of variables from the domain of the 
+        schematic substituion which have an non-zero index. The current implementation only handles 
+        input unification equations containing instances of variables from the domain of the 
+        schematic substituion with a zero index. Such input may lead to non-termination.
+        To continue type OK and Press Enter.""")
         x = input()
         return False if x.lower() =="ok" else True
 
@@ -26,14 +30,18 @@ class nonPrimitiveinputException(Exception):
     def __init__(self):
         pass
     def handle(self):
-        print("The input schematic substitution is non-primitive. The algorithm is designed for primitive schematic substitutions only. Using a non-primitive schematic subsitutions may lead to non-termination.\n To continue type OK and Press Enter.")
+        print("""The input schematic substitution is non-primitive. The current implementation is designed for primitive 
+        schematic substitutions only. Using a non-primitive schematic subsitutions may lead to non-termination.
+        To continue type OK and Press Enter.""")
         x = input()
         return False if x.lower() =="ok" else True
 class nonlinearinputException(Exception):
     def __init__(self):
         pass
     def handle(self):
-        print("The input schematic substitution is non-linear. The algorithm is designed for linear schematic substitutions only. Using a non-linear schematic subsitutions may lead to non-termination.\n To continue type OK and Press Enter.")
+        print("""The input schematic substitution is non-linear.  The current implementation is designed for linear 
+        schematic substitutions only. Using a non-linear schematic subsitutions may lead to non-termination.
+         To continue type OK and Press Enter.""")
         x = input()
         return False if x.lower() =="ok" else True
 class noUnificationProblemException(Exception):
