@@ -23,7 +23,7 @@ class SubProblem:
             return set()  
     def __len__(self):
         return len(self.subproblem)
-   
+    
     def __init__(self,subproblem): 
         self.subproblem = subproblem
         self.vars =set()
@@ -32,11 +32,10 @@ class SubProblem:
         self.futureRel = set()
         self.cyclic = False
 # Collects all variables and recursion occurring in the problem
-        for x,y in subproblem:
-            self.vars.update(SubProblem.getvars(x))
-            self.vars.update(SubProblem.getvars(y))
-            self.recs.update(SubProblem.getrecs(x))
-            self.recs.update(SubProblem.getrecs(y))  
+        for uEq in subproblem:
+            for t in uEq:
+                self.vars.update(SubProblem.getvars(t))
+                self.recs.update(SubProblem.getrecs(t))
 # Collects all variables that are future relevent 
         for x in self.vars:
             if not x.vc in self.futurevars.keys():
@@ -76,18 +75,18 @@ class SubProblem:
                         grouping[x]= set([x,y])
                 elif not type(x) is Var or not type(y) is Var:
                     newsubp.append((x,y))
-            # single = None
-            # for x in self.vars:        
-                # check = True
-                # for g in grouping.keys():
-                    # if x in grouping[g]:
-                        # check = False
-                # if check and not single:
-                    # grouping[x]= set([x])
-                    # single = x
-                # elif check and single:
-                    # grouping[single].add(x)
-            for x,y in grouping.items():
+
+            orderedGroup = {}
+            for x,y in grouping.items():    
+                maxV =x
+                for z in y:
+                    if z.idx > x.idx: maxV = z
+                if maxV != x:
+                    y.remove(maxV)
+                    y.add(x)
+                orderedGroup[maxV]=y
+
+            for x,y in orderedGroup.items():
                 fr = False
                 for z in y: 
                     if checkfur(x) or checkfur(z):
@@ -95,6 +94,7 @@ class SubProblem:
                     substitution[z]=x
                 if fr:
                     furtureRelevant.update(y)
+                    furtureRelevant.add(x)
             newsubp = set(map(applysub(substitution), newsubp))
             ret = SubProblem(newsubp)
             ret.futureRel = furtureRelevant

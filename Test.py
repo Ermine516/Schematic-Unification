@@ -15,10 +15,13 @@ class Test:
         19:True,20:True,21:False,22:False}
         for i in range(1,len(onlyfiles)+1):
             tp =TermParser()
-            I = SchematicSubstitution()
+            unifProb = UnificationProblem(-1)
             with open("Examples/tests/"+onlyfiles[i-1]) as f:
                 unif, mappings= tp.parse_input(f.readlines())
-                for m in mappings.items():I.add_mapping(*m)
-                su = SchematicUnification(I,-1,unif)
+                unifProb.addMappings(mappings.items())
+                unifProb.addEquations(unif)
+                unifProb.makePrimitive()
+                su = SchematicUnification(unifProb,-1)
+                start_time = time.time()
                 worked, tottime = su.unif(time.time())
                 print(f"Test {str(i)} {"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)} Seconds")

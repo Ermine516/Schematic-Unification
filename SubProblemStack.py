@@ -14,13 +14,13 @@ class SubProblemStack:
      "1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",\
      ":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."]
 
-    def __init__(self,prob,dom,debug=0):
+    def __init__(self,unifProb,debug=0):
         self.cycle = -1
         self.mapping =None
         self.debug = debug
-        self.dom = dom 
+        self.dom = unifProb.schSubs 
         
-        self.subproblems = [SubProblem(prob)]
+        self.subproblems = [SubProblem(unifProb)]
     
     def __len__(self):
         return len(self.subproblems)-1
@@ -74,6 +74,7 @@ class SubProblemStack:
         return False
         
     def computerEncoding(self,left,right):
+        if left.vars.intersection(right.vars)!=set([]): return None
         def compatibleTerms(x,y):
             if type(x) is App and type(y) is App and x.func.name ==y.func.name:
                 ret = set()

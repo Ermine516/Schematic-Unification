@@ -1,15 +1,26 @@
 from Term import *
 from functools import reduce
 from Solver import Solver
+from UnificationProblem import UnificationEquation as UEq
+from UnificationProblem import UnificationProblem as UProb
+
 class ThetaUnification(Solver):
     class Configuration:
-        def __init__(self,active,dom):
+        def __init__(self,active):
             self.active = active # Set of unification problems
-            self.store = set() # Set of variable on left unification problems
-            self.dom = [x.name for x in dom] # Set of Domain variable symbols
+            self.store = UProb() # Set of variable on left unification problems
+            self.store.schSubs = active.schSubs
+
+            self.dom = [x.name for x in  self.store.schSubs.symbols] # Set of Domain variable symbols
             self.recursions = set()
             self.seen = set()
-            self.seenTrans = set()
+        def addSeen(self, *args):
+            if len(args)==1:
+                self.seen.add((args[0][0],args[0][0],args[0][1]))
+            elif len(args)==2:
+                self.seen.add((args[0][0],args[0][1],args[1][1]))
+                self.seen.add((args[0][0],args[1][1],args[0][1]))
+
         def __str__(self):
             exset = str([str(x) for x in self.dom])
             ret=f"Active({exset}):\n"
@@ -39,15 +50,14 @@ class ThetaUnification(Solver):
                 return ret
 
             self.recursions.update(findRecursions(binding))
-            self.store.add(binding)
+            self.store+binding
     
     def __init__(self,SchematicSubstitution=None,debug=0,start_time=-1):
         self.recursions=set()
         super().__init__(SchematicSubstitution,debug,start_time)
         
     def unify(self,problem):
-        config = ThetaUnification.Configuration(problem,self.SchematicSubstitution.symbols)  
-
+        config = ThetaUnification.Configuration(problem)  
         def recCycle(x,y):
             if type(y) is App:
                 for z in y.args:
@@ -60,9 +70,9 @@ class ThetaUnification(Solver):
             for r in config.recursions:
                  if self.SchematicSubstitution.isFutureRelevant(r,x): return True
             return False
-        def existsseen(x,y):
+        def existsseen(uEq):
             for p1,p2,p3 in config.seen:
-                if  p2==x and p3==y: return True
+                if  p1==uEq[0] and p2==uEq[0] and p3==uEq[1]: return True
             return False
 
 #Checks useful for the unification procedure
@@ -72,88 +82,94 @@ class ThetaUnification(Solver):
         isVar = lambda a: type(a) is Var
         unseen = lambda a: not a in config.seen
         stored = lambda a: a in config.store
+        anno = lambda a: (uEq[0],uEq[0],uEq[1])
 #Conditions for rules
-        delete = lambda x,y: isTerm(x) and existsseen(x,y)
-        decomposition = lambda x,y:  unseen((x,x,y)) and isTerm(x) and isTerm(y) and x.func.name == y.func.name
-        orient1 = lambda x,y: x!=y and (isVarRec(y) and isTerm(x)) and unseen((x,x,y))
-        orient2 = lambda x,y: x!=y and isVarRec(x) and isVarRec(y) and not (y,x) in config.active
-        clash = lambda x,y:  isTerm(x) and isTerm(y)  and x.func.name != y.func.name
-        store_T_R= lambda x,y: x != y and isVar(x) and  not stored((x,y)) and isRelevant((x,y))
-        store_T_D= lambda x,y: isRec(x) and  not  isVar(y) and x != y and not stored((x,y))
-        store_T_F= lambda x,y: x != y and isVar(x) and  not stored((x,y)) and isFutureRelevant(x)
-        transitivity = lambda x,y: lambda a: x!= a[1] and x!= y and a[0]==x and y!=a[1] and unseen((x,a[1],y)) and unseen((x,y,a[1])) 
+        delete = lambda uEq: isTerm(uEq[0]) and existsseen(uEq)
+        decomposition = lambda uEq:  unseen(anno(uEq)) and isTerm(uEq[0]) and isTerm(uEq[1]) and uEq[0].func.name == uEq[1].func.name
+        orient1 = lambda uEq: not uEq.reflexive() and (isVarRec(uEq[1]) and isTerm(uEq[0])) and unseen(anno(uEq))
+        orient2 = lambda uEq: not uEq.reflexive() and isVarRec(uEq[0]) and isVarRec(uEq[1]) and not uEq.flip() in config.active
+        clash = lambda uEq:  isTerm(uEq[0]) and isTerm(uEq[1])  and uEq[0].func.name != uEq[1].func.name
+        store_T_R= lambda uEq: not uEq.reflexive() and isVar(uEq[0]) and  not stored(uEq) and isRelevant(uEq)
+        store_T_D= lambda uEq: isRec(uEq[0]) and  not  isVar(uEq[1]) and not uEq.reflexive() and not stored(uEq)
+        store_T_F= lambda uEq: not uEq.reflexive() and isVar(uEq[0]) and  not stored(uEq) and isFutureRelevant(uEq[0])
+        transitivity = lambda uEq: lambda a: isVar(uEq[0]) and isVar(a[0]) and uEq[0]!= a[1] and not uEq.reflexive() and a[0]==uEq[0] and uEq[1]!=a[1] and unseen((uEq[0],a[1],uEq[1])) and unseen((uEq[0],uEq[1],a[1])) 
 
 # Checks whether the given binding 'a' is relevent to the binding stored in the configuration
         relevantCheck = lambda a: (lambda b,c: b or a[0].occurs(c[1]) or a[1].occurs(c[0]) or (not type(a[0]) is Rec and a[0]==c[0])) 
         isRelevant = lambda a: reduce(relevantCheck(a),config.store,False)  
-
+        speseen=set()
         change =True
         while change:
             updates=set()
             toRemove=set()
             change = False
-            for x,y in config.active:
+            for uEq in config.active:
     #Delete Rule
-                if delete(x,y):
-                   toRemove.add((x,y))
-                   change =True
+                if delete(uEq):
+                    if self.debug>4: print(f"\t Delete: {str(uEq)}")
+                    toRemove.add(uEq.duplicate())
+                    change =True
     # Decomposition Rule
-                if decomposition(x,y):
-                    if self.debug>4: print(f"\t Decomposition: {x} =?= {y}")
-                    config.seen.add((x,x,y))
-                    toRemove.add((x,y))
-                    updates.update([(x1,y1) for x1,y1 in list(zip(x.args,y.args)) if unseen((x1,x1,y1))])
+                elif decomposition(uEq):
+                    if self.debug>4: print(f"\t Decomposition: {str(uEq)}")
+                    config.addSeen(uEq)
+                    config.addSeen(uEq.flip())
+                    toRemove.add(uEq.duplicate())
+                    updates.update([UEq(x1,y1) for x1,y1 in list(zip(uEq[0].args,uEq[1].args)) if unseen((x1,x1,y1))])
                     change =True
     # symmetry Rule
-                elif orient1(x,y):
-                    if self.debug>4: print(f"\t Orient 1: {x} =?= {y}")
-                    config.seen.update([(x,x,y)])
-                    toRemove.add((x,y))
-                    updates.add((y,x))
+                elif orient1(uEq):
+                    if self.debug>4: print(f"\t Orient 1: {str(uEq)}")
+                    config.addSeen(uEq)
+                    toRemove.add(uEq.duplicate())
+                    updates.add(uEq.flip())
                     change =True
     # symmetry Rule
-                elif orient2(x,y):
-                    if self.debug>4: print(f"\t Orient 2: {x} =?= {y}")
-                    config.seen.update([(x,x,y)])
-                    config.seen.update([(y,y,x)])
-                    updates.add((y,x))
+                elif orient2(uEq):
+                    if self.debug>4: print(f"\t Orient 2: {str(uEq)}")
+                    config.addSeen(uEq)
+                    config.addSeen(uEq.flip())
+                    updates.add(uEq.flip())
                     change =True
     # Reflexivity Rule
-                elif x==y:
-                    if self.debug>4: print(f"\t Reflexivity: {x} =?= {y}")
-                    config.seen.add((x,x,y))
-                    toRemove.add((x,y))
+                elif uEq.reflexive():
+                    if self.debug>4: print(f"\t Reflexivity: {str(uEq)}")
+                    config.addSeen(uEq)
+                    toRemove.add(uEq)
                     change =True
     # Clash Rule
-                elif clash(x,y):
-                    raise Solver.ClashExeption(x.func.name,[x,y],self.start_time)
+                elif clash(uEq):
+                    raise Solver.ClashExeption(uEq[0].func.name,uEq,self.start_time)
     # Store-Θ-R Rule
-                elif store_T_R(x,y):
-                    if self.debug>4: print(f"\t Store-Θ-R: {x} =?= {y}")
-                    config.updateStore((x,y))
+                elif store_T_R(uEq):
+                    if self.debug>4: print(f"\t Store-Θ-R: {str(uEq)}")
+                    config.updateStore(uEq)
                     change =True
     # Store-Θ-D Rule
-                elif store_T_D(x,y):
-                    if self.debug>4: print(f"\t Store-Θ-D: {x} =?= {y}")
-                    config.updateStore((x,y))
+                elif store_T_D(uEq):
+                    if self.debug>4: print(f"\t Store-Θ-D: {str(uEq)}")
+                    config.updateStore(uEq)
                     change =True
     # Store-Θ-F Rule
-                elif  store_T_F(x,y):
-                    if self.debug>4: print(f"\t Store-Θ-F: {x} =?= {y}")
-                    config.updateStore((x,y))
+                elif  store_T_F(uEq):
+                    if self.debug>4: print(f"\t Store-Θ-F: {str(uEq)}")
+                    config.updateStore(uEq)
                     change =True
     #Transitivity           
                 else:
-                    for x1,y1 in filter(transitivity(x,y),config.active):   
-                        if self.debug>4: print(f"\t Transitivity: {x} =?= {y} and {x1} =?= {y1}")
-                        config.seen.add((x,y,y1))
-                        config.seen.add((x,y1,y))
-                        updates.add((y,y1))
+                    for uEq2 in filter(transitivity(uEq),config.active):   
+                        if self.debug>4: print(f"\t Transitivity: {str(uEq)} and {str(uEq2)}")
+                        config.addSeen(uEq,uEq2)
+                        if (uEq,uEq2) in speseen: print("fuck")
+                        speseen.add((uEq,uEq2))
+                        speseen.add((uEq2,uEq))
+                        updates.add(UEq(uEq[1],uEq2[1]))
                         change =True
-
+                #input(uEq)
             config.active = set(filter(lambda a: not a in toRemove, config.active))
             config.active.update(updates)
-        
+        input()
+
         if self.debug>4: print()
         self.recursions=config.recursions
         return config.store, config.active, config.recursions

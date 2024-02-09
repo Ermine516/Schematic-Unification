@@ -1,6 +1,8 @@
 from sys import argv
 from SchematicUnification import *
 from SchematicSubstitution import *
+from UnificationProblem import *
+
 from functools import reduce
 from TermParser import *
 from os import listdir
@@ -19,13 +21,15 @@ def parsing_CMD():
         return  parser.parse_args()
 def unify():
     tp =TermParser()
-    I = SchematicSubstitution()
+    unifProb = UnificationProblem(args.debug)
     try: 
         with open(args.f) as f:
             try:
                 unif, mappings= tp.parse_input(f.readlines())
-                for m in mappings.items():I.add_mapping(*m)
-                for u in unif:  I.add_relevent_vars(u)
+                
+                unifProb.addMappings(mappings.items())
+                unifProb.addEquations(unif)
+                unifProb.makePrimitive()
             except ArityMismatchException as e:
                 e.handle()
                 return None
@@ -47,14 +51,16 @@ def unify():
             except OutofOrderInputException as e:
                 e.handle()
                 return None    
-            except nonlinearinputException as e:
-                return None  
-            except nonPrimitiveinputException as e:
-                return None
+            # except nonlinearinputException as e:
+            #     return None  
+            # except nonPrimitiveinputException as e:
+            #     return None
+            except nonUniforminputException as e:
+                  return None
             except MappingReAssignmentException as e:
                 e.handle()
                 return None
-            su = SchematicUnification(I,args.debug,unif)
+            su = SchematicUnification(unifProb,args.debug)
             start_time = time.time()
             su.unif(time.time())
     except FileNotFoundError as e:

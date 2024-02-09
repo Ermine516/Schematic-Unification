@@ -3,7 +3,6 @@ from collections import defaultdict
 from functools import reduce
 
 
-
 class Func:
     """Immutable data type representing a function symbol."""
     name: str
@@ -25,7 +24,8 @@ class Func:
         if len(args) != self.arity: raise ValueError()
         if len(args) == 1 and type(args[0]) is Idx: return Rec(self, *args)
         else: return App(self, *args)
-
+    def instance(self):
+        return Func(self.name,self.arity)
 class Term:
     """Type of terms for which we can do unification and instantiation."""
     def inducAppRebuild(self,f):
@@ -97,7 +97,7 @@ class Var(Term):
         self.size =1
         self.terms = []
         self.occ = 0
-
+    
 #We need to remember the largest subordinate class.
 
     def format(self):
@@ -113,7 +113,8 @@ class Var(Term):
         c = self.vclass()
         i = self.id()
         return f"{c}"+f"[{i}]"
-
+    def instance(self):
+        return Var(self.vc,self.idx)
 
     def strAlt(self,tag):
         c = self.vclass()
@@ -122,22 +123,10 @@ class Var(Term):
         return f"{c}"+f"[{i}]"
     def __repr__(self):
         return f"{self.vc.lower()}_{self.idx}"
-
-class Idx(Term):
-    def __init__(self,idx):
-        self.number = idx
-
-    def __str__(self):
-        return str(self.number)
-
-    def __eq__(self, other):
-        return isinstance(other, __class__) and self.number == other.number
-
-    def __hash__(self):
-        return hash((self.number))
-
-    def __repr__(self):
-        return str(self.number)
+    def recs(self):
+        return set()
+    def vars(self):
+        return set([self])
 
 class App(Term):
     """Immutable fully-applied function term."""
@@ -167,6 +156,19 @@ class App(Term):
                 else '(' + ','.join(repr(a) for a in self.args) + ')')
         return f"{self.func.name}{args}"
 
+    def instance(self):
+        return self.func.instance()(*map(lambda x: x.instance(),self.args))
+    def recs(self):
+        ret=set()
+        for t in self.args:
+            ret.update(t.recs())
+        return ret
+    def vars(self):
+        ret = set()
+        for t in self.args:
+            ret.update(t.vars())
+        return ret
+       
 class Rec(Term):
     class InvalidFunctionException(Exception):
         def __init__(self,idx):
@@ -179,6 +181,7 @@ class Rec(Term):
     def __init__(self, func, idx):
         assert func.arity == 1
         self.func = func
+        self.name = func.name
         if not type(idx) is Idx: raise InvalidArgumentException(idx)
         self.idx = idx
 
@@ -198,3 +201,25 @@ class Rec(Term):
 
     def __repr__(self):
         return self.func.name.lower()+"_"+"r"+"_"+str(self.idx)
+    def instance(self):
+        return Rec(self.func,Idx(self.idx.number))
+    def recs(self):
+        return set([self])
+    def vars(self):
+        return set()
+class Idx(Term):
+    def __init__(self,idx):
+        self.number = idx
+
+    def __str__(self):
+        return str(self.number)
+
+    def __eq__(self, other):
+        return isinstance(other, __class__) and self.number == other.number
+
+    def __hash__(self):
+        return hash((self.number))
+
+    def __repr__(self):
+        return str(self.number)
+    

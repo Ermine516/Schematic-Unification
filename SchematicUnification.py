@@ -11,16 +11,14 @@ import time
 
 class SchematicUnification:
 
-    def __init__(self,SchematicSubstitution,debug=0,toUnif=[]):
+    def __init__(self,UnifProb,debug=0):
         self.debug = debug
-        self.foSolver = MM(SchematicSubstitution,debug)
-        self.SchSolver = ThetaUnification(SchematicSubstitution,debug)
+        self.foSolver = MM(UnifProb.schSubs,debug)
+        self.SchSolver = ThetaUnification(UnifProb.schSubs,debug)
         self.unifier = Unifier()
         self.count = 0
-        self.SchematicSubstitution = SchematicSubstitution
-        if toUnif ==[]:
-            toUnif = [ x(Idx(0))  for x in I.symbols]
-        self.subproblems = SubProblemStack(toUnif,SchematicSubstitution,debug)
+        self.SchematicSubstitution = UnifProb.schSubs
+        self.subproblems = SubProblemStack(UnifProb,debug)
 
 
     def unif(self,start_time=-1):
@@ -41,20 +39,14 @@ class SchematicUnification:
         return True , (time.time() - start_time)
 
     def unify_current(self):
-        def updateRec(b):
-            RecReplace = lambda x: self.SchematicSubstitution.increment(x.func.name,x.idx) if type(x) is Rec else x
-            return (b[0].inducAppRebuild(RecReplace),b[1].inducAppRebuild(RecReplace))
         def updateRec2(b):
             RecReplace = lambda x: Var(x.func.name,x.idx.number) if type(x) is Rec else x
             return (b[0].inducAppRebuild(RecReplace),b[1].inducAppRebuild(RecReplace))
-
-        current = list(map(updateRec,self.current().subproblem))
+        current = self.current().subproblem.increment(self.SchematicSubstitution)
         if self.debug>2 or (self.count==0 and self.debug>0): 
             self.print_current_problem(self.current().subproblem)
             print()
-        if self.debug>4:    
-            print("Theta Unification:\n")
-        
+        if self.debug>4: print("Theta Unification:\n")
         store, context,recs = self.SchSolver.unify(current)
         forUnifier = set(filter(lambda a: not a in store and not type(a[0]) is Rec, context))
 
@@ -100,8 +92,10 @@ class SchematicUnification:
                 print(f"\t{x} =?= {y}\n")
             print()
             print("Schematic Substitution:\n")
-            for x in self.SchematicSubstitution.mappings.keys():
-                print("\t"+ x+"_i"+" <== "+self.SchematicSubstitution.mappings[x].strAlt("i"))
+            self.SchematicSubstitution.clear()
+            self.SchematicSubstitution.ground()
+            for x in self.SchematicSubstitution.mapping.keys():
+                print("\t"+ x.name+"_i"+" <== "+self.SchematicSubstitution.mapping[x].strAlt("i"))
             print()
 
         else:
