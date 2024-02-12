@@ -1,5 +1,5 @@
 # Schematic-Unification
-The code in this repository implements a unification procedure for primitive schematic unification similar to the algorithm presented in https://arxiv.org/abs/2306.09152. We are currently in the process of implementing the precise algorithm presented in the paper which works for non-linear uniform schematic unification problems as well (though the bindings of the schematic substitutions cannot refer to each other). The code requires the following libraries (for the full list see Requirements.txt):
+The code in this repository implements the unification procedure for Uniform Schematic Unification problems presented in https://arxiv.org/abs/2306.09152. While the implementation works for Simple Schematic Unification Problems, the algorithm is not guarenteed to terminate for such problems. The code requires the following libraries (for the full list see Requirements.txt):
 
 	pyparsing 3.0.9 
 
@@ -11,28 +11,42 @@ To run the test suite, use the following command:
 
 The output should be roughly as follows: 
 
-	Test 1 Passed -- 0.008 Seconds
-	Test 2 Passed -- 0.005 Seconds
-	Test 3 Passed -- 0.04 Seconds
-	Test 4 Passed -- 0.055 Seconds
-	Test 5 Passed -- 1.215 Seconds
-	Test 6 Passed -- 7.937 Seconds
-	Test 7 Passed -- 0.007 Seconds
-	Test 8 Passed -- 0.295 Seconds
-	Test 9 Passed -- 0.272 Seconds
-	Test 10 Passed -- 0.107 Seconds
-	Test 11 Passed -- 0.079 Seconds
-	Test 12 Passed -- 0.028 Seconds
-	Test 13 Passed -- 0.094 Seconds
-	Test 14 Passed -- 0.007 Seconds
-	Test 15 Passed -- 0.039 Seconds
-	Test 16 Passed -- 0.029 Seconds
-	Test 17 Passed -- 0.022 Seconds
+	Test 1 Passed -- 0.015 Seconds
+	Test 2 Passed -- 0.011 Seconds
+	Test 3 Passed -- 0.101 Seconds
+	Test 4 Passed -- 0.095 Seconds
+	Test 5 Passed -- 2.751 Seconds
+	Test 6 Passed -- 17.715 Seconds
+	Test 7 Passed -- 0.018 Seconds
+	Test 8 Passed -- 0.454 Seconds
+	Test 9 Passed -- 0.51 Seconds
+	Test 10 Passed -- 0.199 Seconds
+	Test 11 Passed -- 0.12 Seconds
+	Test 12 Passed -- 0.083 Seconds
+	Test 13 Passed -- 0.215 Seconds
+	Test 14 Passed -- 0.022 Seconds
+	Test 15 Passed -- 0.116 Seconds
+	Test 16 Passed -- 0.042 Seconds
+	Test 17 Passed -- 0.011 Seconds
 	Test 18 Passed -- 0.001 Seconds
-	Test 19 Passed -- 0.016 Seconds
+	Test 19 Passed -- 0.019 Seconds
 	Test 20 Passed -- 0.003 Seconds
-	Test 21 Passed -- 0.002 Seconds
-	Test 22 Passed -- 0.007 Seconds
+	Test 21 Passed -- 0.001 Seconds
+	Test 22 Passed -- 0.003 Seconds
+	Test 23 Passed -- 30.677 Seconds
+	Test 24 Passed -- 0.007 Seconds
+	Test 25 Passed -- 0.002 Seconds
+	Test 26 Passed -- 0.032 Seconds
+	Test 27 Passed -- 0.356 Seconds
+	Test 28 Passed -- 0.162 Seconds
+	Test 29 Passed -- 0.077 Seconds
+	Test 30 Passed -- 1.227 Seconds
+	Test 31 Passed -- 0.025 Seconds
+	Test 32 Passed -- 0.006 Seconds
+	Test 33 Passed -- 0.014 Seconds
+	Following test takes over 300 seconds
+ 	Test 34 Passed -- 385.923 Seconds
+
 
 Below is an example of how to run the code on one of the example files: 
 
@@ -159,8 +173,129 @@ with []. For more complex examples test17.su
 
 	L <== h(h(h(h(h(X[0],h(X[1],X[0])),h(h(R[2],R[3]),R[2])),h(h(W[0],W[1]),W[0])),L_1),h(L_1,h(Q[0],h(h(Y[2],h(Y[3],Y[2])),h(h(Z[0],Z[1]),Z[0])))))
 
+For a more complex example see test33.su which is as follows:
+	## A Non-linear Uniform example that unifies
+
+	f(X[4],L_0) =?= f(f(f(W[0],f(R_3,W[4])),R_0),f(S_0,f(W[1],W[2])))
+
+	R <== f(f(W[0],W[4]),R_7)
+	S <== f(f(E[0],f(E[3],E[2])),S_4)
+	L <== f(f(X[0],f(Z[1],f(X[0],f(X[1],f(Z[0],X[1]))))),L_1)
+
+Note that this example is Uniform, but not primitive. Thus, we need to transform it into a primitive problem before attempting to unify. Running the following command
+
+	python Main.py Unif -f Examples/tests/test33.su --debug 1
+
+results in the following output
+
+	Schematic substitution is Uniform but Non-Primitive.
+	Mapping used to transform Schematic substitution:
+		 {W[4] ==> WRD[4],E[3] ==> ESC[3],E[2] ==> ESB[2]}
+	Schematic Unification Problem:
+	
+		f(X[4],L_0) =?= f(f(f(W[0],f(R_3,WRD[4])),R_0),f(S_0,f(W[1],W[2])))
+	
+	
+	Schematic Substitution:
+
+		R_i <== f(f(W[i],WRD[i+4]),R_{i+1})
+		S_i <== f(f(E[i],f(ESC[i+3],ESB[i+2])),S_{i+1})
+		L_i <== f(f(X[i],f(Z[i+1],f(X[i],f(X[i+1],f(Z[i],X[i+1]))))),L_{i+1})
+
+	==========================================================
+
+		 unifiable --- 0.015 seconds ---
+
+In the directory Examples/simple one finds examples that go beyond the algorithm presented in the above-mentioned paper, simple schematic unification problems. Running the following 
+command 
+
+ 	python Main.py Unif -f Examples/simple/test35.su --debug 3
+
+results in the following prompt:
+
+ 	The input schematic substitution is non-uniform. The algorithm is designed for uniform schematic substitutions only. 
+  	Using a non-uniform schematic subsitutions may lead to non-termination. To continue type OK and Press Enter.
+
+If one types OK the unification process continues and resulting in the following output:
+
+	Schematic Unification Problem:
+
+		L_0 =?= h(Y[0],h(Y[1],Y[0]))
 
 
+	Schematic Substitution:
+
+		L_i <== h(h(L_{i+4},h(X[i+1],X[i])),L_{i+1})
+
+	==========================================================
+
+	Problem 1:
+		L_1 =?= h(Y[1],Y[0])
+		Y[0] =?= h(L_4,h(X[1],X[0]))
+
+	==========================================================
+
+	Problem 2:
+		Y[0] =?= h(h(h(L_8,h(X[5],X[4])),L_5),h(X[1],X[0]))
+		L_2 =?= h(h(h(L_8,h(X[5],X[4])),L_5),h(X[1],X[0]))
+		Y[0] =?= L_2
+
+	==========================================================
+
+	Problem 3:
+		L_3 =?= h(X[1],X[0])
+		L_6 =?= h(h(h(L_12,h(X[9],X[8])),L_9),h(X[5],X[4]))
+		X[3] =?= h(L_9,h(X[6],X[5]))
+		X[2] =?= L_6
+
+	==========================================================
+
+	Problem 4:
+		L_10 =?= h(h(h(L_16,h(X[13],X[12])),L_13),h(X[9],X[8]))
+		X[6] =?= L_10
+		L_7 =?= h(X[5],X[4])
+		X[7] =?= h(L_13,h(X[10],X[9]))
+
+	==========================================================
+
+	Recursion Found 5 => 3 {X[10]=>X[2] , X[11]=>X[3] , X[13]=>X[5] , X[8]=>X[0] , X[14]=>X[6] , X[9]=>X[1] , X[12]=>X[4] , L_14=>L_6 , L_16=>L_8 , L_11=>L_3 , L_17=>L_9}
+
+	Subproblem 5:
+		X[11] =?= h(L_17,h(X[14],X[13]))
+		L_14 =?= h(h(h(L_20,h(X[17],X[16])),L_17),h(X[13],X[12]))
+		X[10] =?= L_14
+		L_11 =?= h(X[9],X[8])
+
+	Subproblem 3:
+		L_3 =?= h(X[1],X[0])
+		L_6 =?= h(h(h(L_12,h(X[9],X[8])),L_9),h(X[5],X[4]))
+		X[3] =?= h(L_9,h(X[6],X[5]))
+		X[2] =?= L_6
+
+
+	Computed Bindings for subproblem 0:
+
+
+	Computed Bindings for subproblem 1:
+		Y[1] <= h(L_5,h(X[2],X[1]))
+
+
+	Computed Bindings for subproblem 2:
+		Y[0] <= h(h(L_6,h(X[3],X[2])),L_3)
+
+
+	Computed Bindings for subproblem 3:
+		X[1] <= h(L_7,h(X[4],X[3]))
+		X[2] <= h(h(L_10,h(X[7],X[6])),L_7)
+		X[0] <= L_4
+		X[3] <= h(h(h(L_13,h(X[10],X[9])),L_10),h(X[6],X[5]))
+
+
+	Computed Bindings for subproblem 4:
+		X[6] <= h(h(L_14,h(X[11],X[10])),L_11)
+		X[5] <= h(L_11,h(X[8],X[7]))
+		X[4] <= L_8
+		X[7] <= h(h(h(L_17,h(X[14],X[13])),L_14),h(X[10],X[9]))
 
 
    
