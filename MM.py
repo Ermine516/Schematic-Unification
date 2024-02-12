@@ -139,7 +139,6 @@ class MM(Solver):
             steps+=1
 #If var_reps is empty and tosolve is not then we have a cycle
         if len(self.tosolve)!=0:
-            x= self.tosolve.pop()
             raise Solver.CycleException(self.toUnifProb(),start_time=self.start_time)
         for vc in self.probVarsDict:
             for idx in self.probVarsDict[vc]:

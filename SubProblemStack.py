@@ -2,7 +2,33 @@ from Term import *
 import clingo
 import clingo.script
 from SubProblem import *
-        
+import time
+
+class StabilityViolationFinalException(Exception):
+        def __init__(self):
+            self.nothing = None
+        def handle(self,debug,start_time):           
+            if debug == 0:
+                print(f"\t Not Stable --- {round(time.time() - start_time,3)} seconds ---")
+            return False, (time.time() - start_time)
+        pass
+
+class StabilityViolationException(Exception):
+        def __init__(self,left,sps,stab):
+            self.left = left
+            self.sps = sps
+            self.st =stab
+        def handle(self,debug,start_time,ret):
+            print(f"Problem not stable (stab Bound:{self.sps.stabRatio}, current:{self.st}):")
+            print("\t",self.left)   
+            print("""Do you wish to continue and update the stability point? To continue type OK and Press Enter.""")
+            x = input()
+            if x.lower() =="ok":
+                self.sps.stabRatio=self.st 
+                return ret
+            else:      
+                raise StabilityViolationFinalException()
+        pass
 
 class SubProblemStack:
 # Base ASP program
@@ -14,12 +40,18 @@ class SubProblemStack:
      "1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",\
      ":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."]
 
+
+   
+
     def __init__(self,unifProb,debug=0):
         self.cycle = -1
         self.mapping =None
         self.debug = debug
         self.dom = unifProb.schSubs 
-        
+        stabProb = unifProb.increment(self.dom)
+        self.stabBound = max(stabProb.depth(),stabProb.maxIdx())
+        self.stabRatio = -1
+
         self.subproblems = [SubProblem(unifProb)]
     
     def __len__(self):
@@ -39,11 +71,14 @@ class SubProblemStack:
     def Top(self):
         return  self.subproblems[-1]
     
-    def Open(self):
-        if self.close(): return None
-        else: 
-            return self.Top()
-    
+    def Open(self,start_time):
+        try:
+            if self.close(): 
+                return None
+            else: 
+                return self.Top()
+        except StabilityViolationException as e:
+            return e.handle(self.debug,start_time,self.Top())
     def close(self):
         for x in reversed(range(0, len(self))):
             left = self.Top()
@@ -51,7 +86,16 @@ class SubProblemStack:
             if  x!=len(self) and not self.futureOverlap(left,right):
                 if self.debug > 5: print(f"computing Subsumption between {x} and {len(self)}\n")
                 leftNorm = left.simplify(self.dom).normalization()
+                left.stab = len(leftNorm.subproblem.vars())
                 rightNorm = right.simplify(self.dom).normalization()
+                if len(self) >= self.stabBound and self.stabRatio==-1:
+                    for p in self.subproblems: 
+                        if p.stab ==-1: p.stab = len(rightNorm.subproblem.vars())
+                    self.stabRatio = max((p.stab for p in self.subproblems))
+                if left.stab > self.stabRatio and len(self) >= self.stabBound: 
+                    raise StabilityViolationException(leftNorm,self,left.stab) 
+                if len(self) < self.stabBound:
+                    return False
                 prog = self.computerEncoding(leftNorm,rightNorm)
                 if prog:
                     if self.debug >5: print("Answer Set Program:\n\n\t"+'\n\t'.join(prog)+"\n")

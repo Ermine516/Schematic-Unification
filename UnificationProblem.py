@@ -5,7 +5,7 @@ class nonUniforminputException(Exception):
     def __init__(self):
         pass
     def handle(self):
-        print("""The input schematic substitution is non-uniform. The algorithm is designed for uniform schematic substitutions only. Using a non-uniform schematic subsitutions may lead to non-termination. To continue type OK and Press Enter.""")
+        print("""The input schematic substitution is non-uniform. The algorithm is designed for uniform schematic substitutions only. Using a non-uniform schematic subsitutions may lead to non-stability. To continue type OK and Press Enter.""")
         x = input()
         return False if x.lower() =="ok" else True
 
@@ -32,11 +32,19 @@ class UnificationEquation:
         return UnificationEquation(self.right,self.left)
     def reflexive(self):
         return self.left ==self.right
+    def vars(self):
+        return self.left.vars().union(self.right.vars())
     def recs(self):
         ret = set()
         for t in self:
             ret.update(t.recs())
         return ret
+    def depth(self):
+        return max(self.left.depth(),self.right.depth())
+    
+    def maxIdx(self):
+        return max(self.left.maxIdx(),self.right.maxIdx())
+
     def normalization(self):
         ret = self.instance() 
         ret.right= ret.right.normalizedInstance()
@@ -78,6 +86,17 @@ class UnificationProblem:
         return self
     def __contains__(self,item):
         return item in self.prob
+    
+    def vars(self):
+        ret = set()
+        for x in self.prob:
+            ret.update(x.vars())
+        return ret
+    def depth(self):
+        return max((x.depth() for x in self.prob))
+    def maxIdx(self):
+        return max((x.maxIdx() for x in self.prob))
+
     def increment(self,ss):
         ss.clear()
         ss.ground(localRecs=self.recs())

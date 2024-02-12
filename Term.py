@@ -41,6 +41,20 @@ class Term:
             return ret
         else:
             return f(self)
+    
+    def depth(self):
+        if isinstance(self,App):
+            return 1+ (max((x.depth() for x in self.args)) if len( self.args)>0 else 0)
+        else:
+            return 1 
+    def maxIdx(self):
+        if isinstance(self,App):
+            return  (max((x.maxIdx() for x in self.args))if len( self.args)>0 else 0)
+        elif isinstance(self,Var):
+            return self.idx
+        elif isinstance(self,Rec):
+            return self.idx.number
+
     def occurs(self,t):
         if self == t:
             return True
@@ -125,7 +139,6 @@ class App(Term):
         ret= self.func.instance()(*map(lambda x: x.instance(),self.args))
         if self.anchor: ret.anchor=self.anchor
         return ret 
-    
     def recs(self)-> set[Rec]:
         ret=set()
         for t in self.args:

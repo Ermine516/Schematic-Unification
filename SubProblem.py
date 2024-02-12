@@ -31,6 +31,7 @@ class SubProblem:
         self.vars =set()
         self.futurevars ={}
         self.recs = set()
+        self.stab =-1
         self.futureRel = futureRel
         self.cyclic = False
 # Collects all variables and recursion occurring in the problem
