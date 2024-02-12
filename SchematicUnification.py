@@ -24,11 +24,11 @@ class SchematicUnification:
     def unif(self,start_time=-1):
         self.foSolver.setTime(start_time)
         self.SchSolver.setTime(start_time)
-        while self.subproblems.Open():
+        while self.subproblems.Open(start_time):
             try:
                 solved, subp, recs= self.unify_current()
             except Solver.CycleException as e:
-                 return e.handle(self.debug)
+                return e.handle(self.debug)
             except Solver.ClashExeption as e:  
                 return e.handle(self.debug)
             self.update_unifier(solved)
