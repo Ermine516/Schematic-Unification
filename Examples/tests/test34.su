@@ -1,4 +1,6 @@
 ## A Non-linear Primitive example that does not unify
+## This problem takes a very long time to terminate
+## Not unifiable --- 352.44 seconds ---
 
 f(f(X[4],f(X[10],X[4])),L_0) =?= f(R_0,f(S[4],f(P_0,S[4])))
 R <== f(f(W[1],f(W[0],f(W[1],f(S[0],f(W[1],S[0]))))),R_1)

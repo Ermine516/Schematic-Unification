@@ -30,12 +30,7 @@ class Solver(ABC):
             if debug >0:
                 if self.addendum=="":print("Cycle Detected:")
                 else:  print("Cycle Detected ("+self.addendum+"):")
-                for x in self.ununified:
-                    if type(x) is Var:
-                        print("\t"+x.format())
-                    else:
-                        print(f"\t{x[0]} =?= {x[1]}")
-                print()
+                print(self.ununified)             
             
             elif debug == 0:
                 print(f"\t Not unifiable --- {round(time.time() - self.start_time,3)} seconds ---")

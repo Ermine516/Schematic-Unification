@@ -3,18 +3,6 @@ from Term import *
 import re
 
 
-class NonBasicInputException(Exception):
-    def __init__(self):
-        pass
-    def handle(self):
-        print("""The input unification equations contains instances of variables from the domain of the 
-        schematic substituion which have an non-zero index. The current implementation only handles 
-        input unification equations containing instances of variables from the domain of the 
-        schematic substituion with a zero index. Such input may lead to non-termination.
-        To continue type OK and Press Enter.""")
-        x = input()
-        return False if x.lower() =="ok" else True
-
 class MappingReAssignmentException(Exception):
     def __init__(self,m1,m2):
         self.m1=m1
@@ -26,24 +14,6 @@ class MappingReAssignmentException(Exception):
         print("\t",self.m2[0].name,self.m2[1])
         return None
 
-class nonPrimitiveinputException(Exception):
-    def __init__(self):
-        pass
-    def handle(self):
-        print("""The input schematic substitution is non-primitive. The current implementation is designed for primitive 
-        schematic substitutions only. Using a non-primitive schematic subsitutions may lead to non-termination.
-        To continue type OK and Press Enter.""")
-        x = input()
-        return False if x.lower() =="ok" else True
-class nonlinearinputException(Exception):
-    def __init__(self):
-        pass
-    def handle(self):
-        print("""The input schematic substitution is non-linear.  The current implementation is designed for linear 
-        schematic substitutions only. Using a non-linear schematic subsitutions may lead to non-termination.
-         To continue type OK and Press Enter.""")
-        x = input()
-        return False if x.lower() =="ok" else True
 class noUnificationProblemException(Exception):
     def __init__(self):
         pass
@@ -144,7 +114,6 @@ class TermParser:
         return None
     def is_interpreted(self,s,loc,toks):
         if not toks[0] in self.found_rec.keys():
-            print(toks,self.found_rec,s)
             UnusedVariableDefinitionWarning(toks[0]).handle()
         else: return self.found_rec[toks[0]]
     def make_var(self,s,loc,toks):
@@ -200,19 +169,4 @@ class TermParser:
         if len(self.unif) == 0: raise noUnificationProblemException()
         for x in self.found_rec.keys():
             if not x in self.mapNames: raise UndefinedInterpretedException(x)
-        try:       
-            if  len(self.mapNames)>1: raise nonlinearinputException()
-        except nonlinearinputException as e:
-                if e.handle(): raise nonlinearinputException()         
-        try:
-            for x,y in self.check_primitive.items():
-                if len(y)>1: raise nonPrimitiveinputException()   
-        except nonPrimitiveinputException as e:
-                if e.handle(): raise nonPrimitiveinputException()
-        try:
-            for x,y in self.unif:
-                if not self.basic(x) or not self.basic(y): raise NonBasicInputException()   
-
-        except NonBasicInputException as e:
-                if e.handle(): raise NonBasicInputException()
         return (self.unif,self.mappings)

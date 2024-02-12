@@ -1,6 +1,8 @@
 from Term import *
+from Namer import Namer
+from Substitution import * 
 
-class SchematicSubstitution:
+class SchematicSubstitution(Substitution):
     class InvalidFunctionException(Exception):
         def __init__(self,f):
             self.func = f
@@ -16,42 +18,71 @@ class SchematicSubstitution:
             print()
             print("Invalid Recursion: the interpreted class ",self.w+" occured in the definition of the iterpreted class "+self.c)
             return None
-    class ClassOverlapException(Exception):
-        def __init__(self,c1,c2,m):
-            self.c1 =c1
-            self.c2= c2
-            self.mappings = m
-        def handle(self):
-            print()
-            print("The definitions of "+str(self.c1)+" and "+str(self.c2)+"overlap:\n"+str(self.mappings[self.c1])+"\n"+str(self.mappings[self.c2]))
-            print("""The current implementation is designed for non-overlapping definitions.""")
-
-            return None
-
-    def __init__(self,nesting=False):
+    def __init__(self):
+        super().__init__()
         self.symbols = []
-        self.mappings = {}
-        self.associated_classes = {}
+        self.occuringVariables=set()
+#Holds the mutually recursive  intrepreted variables
+        self.mutual = defaultdict(set)
+#Holds the indices of intrepreted variables
+        self.recursions = defaultdict(set)
+#Holds the variable classes associated with each interpreted class
+# and the minimum and maximum value in each class. 
+# for example, {'L': {'X': 0, 'R': 2, 'W': 0, 'Q': 0, 'Y': 2, 'Z': 0}}
+        self.associated_classes_min = {}
+        self.associated_classes_max = {}
+# for each interpreted variable we have a dictionary containing 
+# the variable classes associated with that recursive variable indexed 
+# by number
+# {'L': {'X': {1: x_1, 0: x_0}, 'Z': {0: z_0, 1: z_1}}}
         self.varsenum ={}
+# for each interpreted variable we have a dictionary containing 
+# the variable classes associated with that recursive variable indexed 
+# by variable
+# {'L': {'X': {x_1: 1, x_0: 0}, 'Z': {z_0: 0, z_1: 1}}}
         self.revvarsenum ={}
-        self.nesting = nesting
+        self.incrementors = {}   
+        self.nesting = False
+        self.primitive = True
+        self.uniform =True
+        self.simple = True
 
-    def reset(self,nesting=False):
-        self.symbols = []
-        self.mappings = {}
-        self.associated_classes = {}
-        self.varsenum ={}
-        self.revvarsenum ={}
-        self.nesting = nesting
+
+    def ground(self,i=0,localRecs=None):
+        R =  localRecs  if localRecs else self.incrementors.keys()
+        for x in R: 
+            self.addBinding(*self.incrementors[x.func if localRecs else x](x.idx.number if localRecs else i))
+        for x,y in self.mapping.items():
+            if type(y) is App: y.anchor=x
+    def clear(self):
+        self.mapping = {}
+    def vars(self):
+        return self.occuringVariables
+    def updateType(self):
+        if len(self.mutual.keys()) !=0:
+           self.primitive= False
+           self.uniform= False
+           self.simple = False
+           self.nesting = True
+           raise self.InvalidRecursionException(term.func.name,sym)
+        for s in self.recursions.values():
+            if len(s) > 1:
+                self.primitive= False
+                self.uniform= False
+            if len(list(filter(lambda x: x > 1,s)))> 0:
+                self.primitive= False
+
+    def associated_classes(self,name):
+        return self.associated_classes_max[keys].keys()
 
     def isFutureRelevant(self,r,x):
-        if x.vc in self.associated_classes[r.func.name].keys():
-            minval = self.associated_classes[r.func.name][x.vc]
+        if x.vc in self.associated_classes_min[r.func.name].keys():
+            minval = self.associated_classes_min[r.func.name][x.vc]
             if r.idx.number +minval <= x.idx: return True
         return False
-    def add_relevent_vars(self,terms,clean=False):
+    def add_relevent_vars(self,uEq,clean=False):
         for x,y in self.varsenum.items():
-            for t in terms:
+            for t in uEq:
                 self.add_relevent_vars_helper(x,t,clean)
     def add_relevent_vars_helper(self,rec,term,clean=False):
         if  type(term)  is Var:
@@ -61,29 +92,38 @@ class SchematicSubstitution:
         elif type(term) is App:
             for t in term.args:
                 self.add_relevent_vars_helper(rec,t)
-    def add_mapping(self,sym,term,clean=False):
-        if sym.arity != 1: raise InvalidFunctionException(sym)
-        self.associated_classes[sym.name] = {}
+    def add_interpreted(self,sym,term,clean=False):
+        def insert(i,term):
+            if type(term) is App:
+                return term.func(*map(lambda x: insert(i,x),term.args))
+            elif type(term) is Var:
+                return Var(term.vc,i+term.idx)
+            elif type(term) is Rec:
+                return Rec(term.func,Idx(i+term.idx.number))
+        if sym.arity != 1: 
+            raise InvalidFunctionException(sym)
+        self.associated_classes_min[sym.name] = {}
+        self.associated_classes_max[sym.name] = {}
+
         self.extractclasses(sym.name,term)
         self.symbols.append(sym)
-        class_groups = list(map(lambda a: (a,set(self.associated_classes[a].keys())),self.associated_classes.keys()))
+        class_groups = list(map(lambda a: (a,set(self.associated_classes_min[a].keys())),self.associated_classes_min.keys()))
         while len(class_groups)!= 0:
             vclass,cur = class_groups.pop()
-            for x,y in  class_groups:
-                if len(cur.intersection(y))!= 0: raise ClassOverlapException(vclass,x,self.mappings)
-        self.mappings[sym.name] = term
 
-        self.varsenum[sym.name] = {x:{} for x in self.associated_classes[sym.name] }
-        self.revvarsenum[sym.name] ={x:{} for x in self.associated_classes[sym.name]}
+        self.varsenum[sym.name] = {x:{} for x in self.associated_classes_min[sym.name] }
+        self.revvarsenum[sym.name] ={x:{} for x in self.associated_classes_min[sym.name]}
         self.initialize(term,sym.name,clean)
-
+        self.updateType()
+        self.occuringVariables.update(term.vars())
+        self.incrementors[sym]=lambda i: (Rec(sym,Idx(i)),insert(i,term))
     def initialize(self,t,sym,clean=False):
         if type(t) is Var:
             if clean: t.reset()
-            if not t in self.revvarsenum[sym][t.vclass()].keys():
-                self.varsenum[sym][t.vclass()][t.id()],self.revvarsenum[sym][t.vclass()][t] = t,t.id()
+            if not t in self.revvarsenum[sym][t.vc].keys():
+                self.varsenum[sym][t.vc][t.idx],self.revvarsenum[sym][t.vc][t] = t,t.idx
                 return t
-            elif  t in self.revvarsenum[sym][t.vclass()].keys():
+            elif  t in self.revvarsenum[sym][t.vc].keys():
                 return t
         elif type(t) is App:
                 return t.func(*map(lambda a: self.initialize(a,sym),t.args))
@@ -92,33 +132,68 @@ class SchematicSubstitution:
         else:
             raise Exception
 
-    def increment(self,sym,idx,clean=False):
-        return self.increment_help(self.mappings[sym],sym,idx.number,clean)
 
-    def increment_help(self,t,sym,num,clean=False):
-        if type(t) is Var:
-            if not t.idx+num in self.varsenum[sym][t.vc].keys():
-                newvar = Var(t.vc,(t.idx+num))
-                self.varsenum[sym][t.vc][t.idx+num],self.revvarsenum[sym][t.vc][newvar] = newvar, t.idx+num
-                return newvar
-            else:
-                if clean:
-                    self.varsenum[sym][t.vc][t.idx+num].reset()
-                return Var.find(self.varsenum[sym][t.vc][t.idx+num])
-        elif type(t) is App:
-            return t.func(*map(lambda a:  self.increment_help(a,sym,num,clean),t.args))
-        elif type(t) is Rec:
-            return t.func(Idx(num+(t.idx.number if t.func.name == sym else 0)))
-        else: raise Exception
 
     def extractclasses(self,sym,term):
         if type(term) is Var:
-            if not term.vc in self.associated_classes[sym].keys():
-                self.associated_classes[sym][term.vc] = term.idx
+            if not term.vc in self.associated_classes_min[sym].keys():
+                self.associated_classes_min[sym][term.vc] = term.idx
+                self.associated_classes_max[sym][term.vc] = term.idx
             else:
-                self.associated_classes[sym][term.vc] = min(term.idx,self.associated_classes[sym][term.vc])
+                self.associated_classes_min[sym][term.vc] = min(term.idx,self.associated_classes_min[sym][term.vc])
+                self.associated_classes_max[sym][term.vc] = max(term.idx,self.associated_classes_max[sym][term.vc])
         elif type(term) is App:
             term.inducApp(lambda a:self.extractclasses(sym,a))
-        elif not self.nesting and type(term) is Rec:
-            if term.func.name != sym:
-                raise self.InvalidRecursionException(term.func.name,sym)
+        elif type(term) is Rec:
+            if term.func.name != sym: self.mutual[sym].add(term)
+            self.recursions[sym].add(term.idx.number)
+                
+    def makePrimitive(self):
+        def makeSub(sym,idx,names,t):
+            mu =Substitution()
+            if type(t) is App:
+                nArgs = []
+                for x in t.args:
+                    tt, mu2 =  makeSub(sym,idx,names,x)
+                    nArgs.append(tt)
+                    mu = mu(mu2)
+                return t.func(*tuple(nArgs)),mu 
+            elif type(t) is Var:
+                idxMod = t.idx % idx
+                nName = names[t.vc][idxMod]
+                nidx = 0 if idxMod == 0 else t.idx/idxMod
+                nVar = Var(nName,idxMod)
+                return nVar, mu+(t,Var(nName,idxMod))
+            elif type(t) is Rec:
+                return Rec(t.func,Idx(1)), mu
+        if not self.uniform: return None, None
+        if self.primitive: return self, Substitution()
+
+        prim = SchematicSubstitution()
+        sigma = Substitution()
+        symIdxPairs = [(x,list(y)[0])for x,y in self.recursions.items() if list(y)[0]> 1]
+        symIdxPairs.sort(key=lambda x: x[1],reverse=True)
+        nu = Substitution()
+        self.clear()
+        self.ground(0)
+        pairs = {x.name:self.mapping[Rec(x,Idx(0))].instance() for x in self.symbols if not x in self.recursions.keys()}
+        for i in range(0,len(symIdxPairs)):
+            sym,idx = symIdxPairs[i]
+            assLCls = self.associated_classes_min[sym].keys()
+            symTerm = nu(self.mapping[Rec(Func(sym,1),Idx(0))])
+            assLClsNames = {}
+            for x in assLCls:
+                mNames=Namer(x+sym)
+                names = {0:x}
+                for y in range(1,idx):
+                    names[y]=mNames.current_name()
+                    mNames.next_name()
+                assLClsNames[x]= names
+            nt, mu = makeSub(sym,idx,assLClsNames,symTerm)
+            nu = nu(mu)
+            pairs[sym] = nt
+        pairs = [(x,nu(y)) for x,y in pairs.items()]
+        for x,y in pairs:
+            prim.add_interpreted(Func(x,1),y)
+        curVars = [x for x in nu.domain()]
+        return prim, nu
