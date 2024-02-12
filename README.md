@@ -1,3 +1,6 @@
+# For Reviewers
+Implementation of the algorithm is now complete with 34 test examples in Example/tests
+
 # Schematic-Unification
 The code in this repository implements the unification procedure for Uniform Schematic Unification problems presented in https://arxiv.org/abs/2306.09152. While the implementation works for Simple Schematic Unification Problems, the algorithm is not guarenteed to terminate for such problems. The code requires the following libraries (for the full list see Requirements.txt):
 
