@@ -87,9 +87,6 @@ class SubProblemStack:
                 return ret
             elif not type(x) is App and not type(y) is App: return set([(x,y)])
             else: return None
-        # print("After")
-        # print(left)
-        # print(right)
         prog = []
         prog.extend(SubProblemStack.clingoBasic) 
         varsLeft =set()

@@ -5,9 +5,7 @@ class nonUniforminputException(Exception):
     def __init__(self):
         pass
     def handle(self):
-        print("""The input schematic substitution is non-uniform. The algorithm is designed for uniform 
-        schematic substitutions only. Using a non-uniform schematic subsitutions may lead to non-termination.
-        To continue type OK and Press Enter.""")
+        print("""The input schematic substitution is non-uniform. The algorithm is designed for uniform schematic substitutions only. Using a non-uniform schematic subsitutions may lead to non-termination. To continue type OK and Press Enter.""")
         x = input()
         return False if x.lower() =="ok" else True
 

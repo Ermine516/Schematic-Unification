@@ -26,7 +26,6 @@ def unify():
         with open(args.f) as f:
             try:
                 unif, mappings= tp.parse_input(f.readlines())
-                
                 unifProb.addMappings(mappings.items())
                 unifProb.addEquations(unif)
                 unifProb.makePrimitive()
@@ -49,14 +48,9 @@ def unify():
                 e.handle()
                 return None
             except OutofOrderInputException as e:
-                e.handle()
                 return None    
-            # except nonlinearinputException as e:
-            #     return None  
-            # except nonPrimitiveinputException as e:
-            #     return None
             except nonUniforminputException as e:
-                  return None
+                if e.handle(): return None
             except MappingReAssignmentException as e:
                 e.handle()
                 return None
