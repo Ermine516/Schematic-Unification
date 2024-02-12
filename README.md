@@ -214,7 +214,8 @@ command
 results in the following prompt:
 
  	The input schematic substitution is non-uniform. The algorithm is designed for uniform schematic substitutions only. 
-  	Using a non-uniform schematic subsitutions may lead to non-termination. To continue type OK and Press Enter.
+  	Using a non-uniform schematic subsitutions may lead to non-stability. To continue type OK and Press Enter.
+
 
 If one types OK the unification process continues and resulting in the following output:
 
@@ -298,4 +299,53 @@ If one types OK the unification process continues and resulting in the following
 		X[7] <= h(h(h(L_17,h(X[14],X[13])),L_14),h(X[10],X[9]))
 
 
+The following simple schematic unification problem violates stability. Running the following 
+command 
+
+ 	python Main.py Unif -f Examples/simple/test36.su --debug 1
+
+results in the following output
+
+	The input schematic substitution is non-uniform. The algorithm is designed for uniform schematic substitutions only. Using a non-uniform schematic subsitutions may lead to non-stability. To continue type OK and Press Enter.		
+	ok
+	Schematic Unification Problem:
+
+		L_0 =?= h(Y[0],h(Y[1],Y[0]))
+
+
+	Schematic Substitution:
+
+		L_i <== h(h(X[i],h(L_{i+4},X[i])),L_{i+1})
+
+	==========================================================
+
+	Problem not stable (stab Bound:5, current:8):
+	 	{
+		X[8] =?= h(X[10],h(L_14,X[10]))
+	,
+		X[4] =?= L_8
+	,
+		X[7] =?= L_10
+	,
+		L_8 =?= h(L_9,X[5])
+	,
+		L_5 =?= h(L_6,X[2])
+	,
+		L_11 =?= h(X[9],h(L_13,X[9]))
+	,
+		L_8 =?= h(X[6],h(L_10,X[6]))
+	,
+		X[2] =?= h(X[4],h(L_8,X[4]))
+	,
+		X[7] =?= h(X[8],h(L_12,X[8]))
+	,
+		L_11 =?= h(L_12,X[8])
+	,
+		X[4] =?= h(X[6],h(L_10,X[6]))
+	,
+		X[5] =?= h(X[7],h(L_11,X[7]))
+	}
+	Do you wish to continue and update the stability point? To continue type OK and Press Enter.
+
+We are prompted again when stability fails. If we type ok, a cycle will be detected. 
    
