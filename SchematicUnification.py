@@ -24,16 +24,20 @@ class SchematicUnification:
     def unif(self,start_time=-1):
         self.foSolver.setTime(start_time)
         self.SchSolver.setTime(start_time)
-        while self.subproblems.Open(start_time):
-            try:
-                solved, subp, recs= self.unify_current()
-            except Solver.CycleException as e:
-                return e.handle(self.debug)
-            except Solver.ClashExeption as e:  
-                return e.handle(self.debug)
-            self.update_unifier(solved)
-            self.update_subproblems(subp,recs)
-            self.update()
+        try:
+            while self.subproblems.Open(start_time):
+                try:
+                    solved, subp, recs= self.unify_current()
+                except Solver.CycleException as e:
+                    return e.handle(self.debug)
+                except Solver.ClashExeption as e:  
+                    return e.handle(self.debug)
+                self.update_unifier(solved)
+                self.update_subproblems(subp,recs)
+                self.update()
+        except StabilityViolationFinalException as e:
+            return e.handle(self.debug,start_time)
+
         if self.debug >1: self.print_final_results()  
         if self.debug in [0,1]: print(f"\t unifiable --- {round(time.time() - start_time,3)} seconds ---")
         return True , (time.time() - start_time)
