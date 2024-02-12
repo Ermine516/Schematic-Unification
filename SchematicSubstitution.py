@@ -52,7 +52,8 @@ class SchematicSubstitution(Substitution):
         R =  localRecs  if localRecs else self.incrementors.keys()
         for x in R: 
             self.addBinding(*self.incrementors[x.func if localRecs else x](x.idx.number if localRecs else i))
-
+        for x,y in self.mapping.items():
+            if type(y) is App: y.anchor=x
     def clear(self):
         self.mapping = {}
     def vars(self):
@@ -119,10 +120,10 @@ class SchematicSubstitution(Substitution):
     def initialize(self,t,sym,clean=False):
         if type(t) is Var:
             if clean: t.reset()
-            if not t in self.revvarsenum[sym][t.vclass()].keys():
-                self.varsenum[sym][t.vclass()][t.id()],self.revvarsenum[sym][t.vclass()][t] = t,t.id()
+            if not t in self.revvarsenum[sym][t.vc].keys():
+                self.varsenum[sym][t.vc][t.idx],self.revvarsenum[sym][t.vc][t] = t,t.idx
                 return t
-            elif  t in self.revvarsenum[sym][t.vclass()].keys():
+            elif  t in self.revvarsenum[sym][t.vc].keys():
                 return t
         elif type(t) is App:
                 return t.func(*map(lambda a: self.initialize(a,sym),t.args))

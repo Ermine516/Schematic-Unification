@@ -160,16 +160,10 @@ class ThetaUnification(Solver):
                     for uEq2 in filter(transitivity(uEq),config.active):   
                         if self.debug>4: print(f"\t Transitivity: {str(uEq)} and {str(uEq2)}")
                         config.addSeen(uEq,uEq2)
-                        if (uEq,uEq2) in speseen: print("fuck")
-                        speseen.add((uEq,uEq2))
-                        speseen.add((uEq2,uEq))
                         updates.add(UEq(uEq[1],uEq2[1]))
                         change =True
-                #input(uEq)
             config.active = set(filter(lambda a: not a in toRemove, config.active))
             config.active.update(updates)
-        input()
-
         if self.debug>4: print()
         self.recursions=config.recursions
         return config.store, config.active, config.recursions

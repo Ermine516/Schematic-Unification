@@ -50,7 +50,9 @@ class SubProblemStack:
             right = self.subproblems[x]
             if  x!=len(self) and not self.futureOverlap(left,right):
                 if self.debug > 5: print(f"computing Subsumption between {x} and {len(self)}\n")
-                prog = self.computerEncoding(left.simplify(self.dom),right.simplify(self.dom))
+                leftNorm = left.simplify(self.dom).normalization()
+                rightNorm = right.simplify(self.dom).normalization()
+                prog = self.computerEncoding(leftNorm,rightNorm)
                 if prog:
                     if self.debug >5: print("Answer Set Program:\n\n\t"+'\n\t'.join(prog)+"\n")
                     if self.solverASP(prog,x): return True
@@ -85,7 +87,9 @@ class SubProblemStack:
                 return ret
             elif not type(x) is App and not type(y) is App: return set([(x,y)])
             else: return None
-
+        # print("After")
+        # print(left)
+        # print(right)
         prog = []
         prog.extend(SubProblemStack.clingoBasic) 
         varsLeft =set()
@@ -95,17 +99,17 @@ class SubProblemStack:
         tops =set()
         other=set()
         for p1 in right.subproblem:
-            xt1,yt1 = p1
+            xt1,yt1 = p1[0],p1[1]
             validpairs={}
             other.add(p1)
             for p2 in left.subproblem:
-                xt2,yt2 = p2
+                xt2,yt2  = p2[0],p2[1]
                 varMaps=compatibleTerms(yt2,yt1)
                 tops.add(p2)
                 if varMaps:
                     varMaps.update(compatibleTerms(xt2,xt1))
-                    key = "match("+str(p1)+","+str(p2)+")"
-                    validpairs[key] = (f",other(Y), not match(Y,{str(p2)}), Y!={str(p1)}",varMaps)
+                    key = "match("+repr(p1)+","+repr(p2)+")"
+                    validpairs[key] = (f",other(Y), not match(Y,{repr(p2)}), Y!={repr(p1)}",varMaps)
             if len(validpairs) !=0:
                 prog.append("{"+';'.join(validpairs.keys())+"}>=1.")
                 for pairing, codemap in validpairs.items():
