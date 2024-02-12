@@ -24,7 +24,6 @@ class StabilityViolationException(Exception):
             print("""Do you wish to continue and update the stability point? To continue type OK and Press Enter.""")
             x = input()
             if x.lower() =="ok":
-                print("here")
                 self.sps.stabRatio=self.st 
                 return ret
             else:      
