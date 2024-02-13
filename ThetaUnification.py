@@ -95,7 +95,7 @@ class ThetaUnification(Solver):
         transitivity = lambda uEq: lambda a: isVar(uEq[0]) and isVar(a[0]) and uEq[0]!= a[1] and not uEq.reflexive() and a[0]==uEq[0] and uEq[1]!=a[1] and unseen((uEq[0],a[1],uEq[1])) and unseen((uEq[0],uEq[1],a[1])) 
 
 # Checks whether the given binding 'a' is relevent to the binding stored in the configuration
-        relevantCheck = lambda a: (lambda b,c: b or a[0].occurs(c[1]) or a[1].occurs(c[0]) or (not type(a[0]) is Rec and a[0]==c[0])) 
+        relevantCheck = lambda a: (lambda b,c: b or c[1].occurs(a[0]) or c[0].occurs(c[1]) or (not type(a[0]) is Rec and a[0]==c[0])) 
         isRelevant = lambda a: reduce(relevantCheck(a),config.store,False)  
         speseen=set()
         change =True

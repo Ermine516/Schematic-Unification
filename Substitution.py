@@ -1,18 +1,17 @@
-from Term import *
-from UnificationProblem import *
-from Substitutable import Substitutable
-
+from Substitutable import *
+from collections.abc import Iterable
 class Substitution(Substitutable): 
     def __init__(self,pairs=[]): 
         self.mapping = {}
         for x,y in pairs:
-            self.mapping[x]=y
-
+            if isinstance(x,Domainable) and isinstance(y,Substitutable): 
+                self.mapping[x]=y
+            else:
+                raise ValueError()
 # Magic Methods
-  
+
     def __add__(self,b):
-        if type(b) is tuple and len(b) == 2:
-            self.addBinding(b[0],b[1])
+        self.addBinding(*b)
         return self
 
     def __str__(self):
@@ -20,11 +19,12 @@ class Substitution(Substitutable):
 
     def __call__(self, *args):
         x= args[0] if len(args)==1 else None
-        if type(x) is set: return set(map(self,x))
-        elif type(x) is list: return list(map(self,x))
-        elif type(x) is tuple: return tuple(map(self,x))
-        elif isinstance(x,Substitutable): return x.handleSubstitution(self)
-        else: raise ValueError()
+        if isinstance(x,Substitutable): 
+            return x.handleSubstitution(self)
+        elif isinstance(x,Iterable): 
+            return x.__class__.__call__(map(self,x))
+        else: 
+            raise ValueError()
 
 # Abstract Methods
     def handleSubstitution(self,sigma):
@@ -38,10 +38,11 @@ class Substitution(Substitutable):
 # Class Specific Methods
 
     def addBinding(self,x,t):
-        if not type(x) is Var and not type(x) is Rec: return False
-        if x == t: return False
-        self.mapping[x] = t
-        return True
+        if not isinstance(x,Domainable) or x==t or x in self.mapping.keys(): 
+            return False
+        else:
+            self.mapping[x] = t
+            return True
 
     def removebinding(self,x):
         if x in self.mapping.keys():

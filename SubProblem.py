@@ -46,7 +46,7 @@ class SubProblem:
             if x.idx >self.futurevars[x.vc].idx: 
                 self.futurevars[x.vc] =  x 
     def normalization(self):
-        return SubProblem(self.subproblem.normalization(),futureRel=self.futureRel)
+        return SubProblem(self.subproblem.normalize(),futureRel=self.futureRel)
 
     def simplify(self,dom):
             def applys(s,t):    

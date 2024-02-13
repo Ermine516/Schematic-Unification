@@ -1,6 +1,9 @@
 import SchematicSubstitution as schsub
 from Substitution import Substitution as sub
 from Substitutable import Substitutable
+from TermAttr import TermAttr
+from Normalizable import Normalizable
+
 class nonUniforminputException(Exception):
     def __init__(self):
         pass
@@ -9,14 +12,15 @@ class nonUniforminputException(Exception):
         x = input()
         return False if x.lower() =="ok" else True
 
-class UnificationEquation(Substitutable):
+class UnificationEquation(Substitutable,TermAttr,Normalizable):
     def __init__(self,left,right,anno=""):
         self.left = left
         self.right = right
         self.iterstate = 2
         self.anno=anno
 
-#Magic Methods    
+#Magic Methods 
+
     def __iter__(self):
         self.iterstate=2
         return self
@@ -49,43 +53,66 @@ class UnificationEquation(Substitutable):
         return item is self.left or item is self.right
 
 #Abstract Methods
+    def normalize(self):
+        ret = self.instance() 
+        ret.right= ret.right.normalize()
+        return ret
     def handleSubstitution(self,sigma):
         return UnificationEquation(sigma(self.left),sigma(self.right))
 
-#Class Specific Methods
-    def duplicate(self):
-        return UnificationEquation(self.left,self.right)
-    def instance(self):
-        return UnificationEquation(self.left.instance(),self.right.instance())
-    def flip(self):
-        return UnificationEquation(self.right,self.left)
-    def reflexive(self):
-        return self.left ==self.right
-    def vars(self):
-        return self.left.vars().union(self.right.vars())
     def recs(self):
         ret = set()
         for t in self:
             ret.update(t.recs())
         return ret
-    def depth(self):
-        return max(self.left.depth(),self.right.depth())
+    def vars(self):
+        return self.left.vars().union(self.right.vars())
+    
+    def varsOcc(self):
+        return self.left.varsOcc() or self.right.varsOcc()
+    
+    def recsOcc(self):
+        return self.left.recsOcc() or self.right.recsOcc()
     
     def maxIdx(self):
         return max(self.left.maxIdx(),self.right.maxIdx())
+    
+    def minIdx(self):
+        return max(self.left.minIdx(),self.right.minIdx())
+    
+    def occurs(self,t):
+        if not isinstance(t,Term): raise ValueError
+        return max(self.left.occurs(t),self.right.occurs(t))
+    
+    def depth(self):
+        return max(self.left.depth(),self.right.depth())
+    
+    def instance(self):
+        return UnificationEquation(self.left.instance(),self.right.instance())
 
-    def normalization(self):
-        ret = self.instance() 
-        ret.right= ret.right.normalizedInstance()
-        return ret
+    def applyFunc(self,f):
+        return UnificationEquation(self.left.applyFunc(f),self.right.applyFunc(f))
+#Class Specific Methods
+    def duplicate(self):
+        return UnificationEquation(self.left,self.right)
+   
+    def flip(self):
+        return UnificationEquation(self.right,self.left)
+    def reflexive(self):
+        return self.left ==self.right
+
+    
    
     
-class UnificationProblem(Substitutable):
+class UnificationProblem(Substitutable,TermAttr,Normalizable):
     def __init__(self,debug=0):
         self.schSubs = schsub.SchematicSubstitution()
         self.prob = set()
         self.PrimMap = sub()
         self.debug = debug
+
+#Magic Methods    
+
     def __len__(self):
         return len(self.prob)
     def __iter__(self):
@@ -103,35 +130,55 @@ class UnificationProblem(Substitutable):
         return item in self.prob
     
 #Abstract Methods
+    def normalize(self):
+        ret = self.instance() 
+        ret.prob = set([x.normalize() for x in ret])
+        return ret
     def handleSubstitution(self,sigma):
         ret = UnificationProblem()
-        for eq in self.prob:
+        for eq in self:
             nEq = sigma(eq)
             ret.addEquation(nEq.left,nEq.right)
         return ret
-
-#Class Specific Methods
+    
+    def recs(self):
+        ret = set()
+        for x in prob:
+            ret.update(x.recs())
+        return ret
 
     def vars(self):
         ret = set()
         for x in self.prob:
             ret.update(x.vars())
         return ret
-    def depth(self):
-        return max((x.depth() for x in self.prob))
+
+    def varsOcc(self):
+        ret = []
+        for x in self.prob:
+            ret.append(x.varsOcc())
+        return ret
+
+    def recsOcc(self):
+        ret = []
+        for x in self.prob:
+            ret.append(x.recsOcc())
+        return ret
+
     def maxIdx(self):
         return max((x.maxIdx() for x in self.prob))
 
-    def increment(self,ss):
-        ss.clear()
-        ss.ground(localRecs=self.recs())
-        return ss(self.instance())
+    def minIdx(self):
+        return max((x.minIdx() for x in self.prob))
     
-    def normalization(self):
-        ret = self.instance() 
-        for x in ret:
-            x.right= x.right.normalizedInstance()
-        return ret
+    def occurs(self,t):
+        for x in self.prob:
+            if x.occurs(t): return True
+        return False
+
+    def depth(self):
+        return max((x.depth() for x in self.prob))
+    
     def instance(self):
         inst = UnificationProblem()
         inst.schSubs = self.schSubs
@@ -139,6 +186,21 @@ class UnificationProblem(Substitutable):
         inst.debug = self.debug 
         inst.prob = set([uEq.instance() for uEq in self.prob]) 
         return inst
+    
+    def applyFunc(self,f):
+        newUP = self.instance()
+        newUP.prob = set([uEq.applyFunc(f) for uEq in self.prob]) 
+        return newUP
+#Class Specific Methods
+
+
+    def increment(self,ss):
+        ss.clear()
+        ss.ground(localRecs=self.recs())
+        return ss(self.instance())
+    
+
+
     def addEquation(self,s,t,anno=""):
         nEq = UnificationEquation(s,t,anno)
         self.prob.add(nEq)

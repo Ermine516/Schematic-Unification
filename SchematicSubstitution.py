@@ -51,7 +51,7 @@ class SchematicSubstitution(Substitution):
     def ground(self,i=0,localRecs=None):
         R =  localRecs  if localRecs else self.incrementors.keys()
         for x in R: 
-            self.addBinding(*self.incrementors[x.func if localRecs else x](x.idx.number if localRecs else i))
+            self.addBinding(*self.incrementors[x.func if localRecs else x](x.idx if localRecs else i))
         for x,y in self.mapping.items():
             if type(y) is App: y.anchor=x
     def clear(self):
@@ -78,7 +78,7 @@ class SchematicSubstitution(Substitution):
     def isFutureRelevant(self,r,x):
         if x.vc in self.associated_classes_min[r.func.name].keys():
             minval = self.associated_classes_min[r.func.name][x.vc]
-            if r.idx.number +minval <= x.idx: return True
+            if r.idx +minval <= x.idx: return True
         return False
     def add_relevent_vars(self,uEq,clean=False):
         for x,y in self.varsenum.items():
@@ -99,7 +99,7 @@ class SchematicSubstitution(Substitution):
             elif type(term) is Var:
                 return Var(term.vc,i+term.idx)
             elif type(term) is Rec:
-                return Rec(term.func,Idx(i+term.idx.number))
+                return Rec(term.func,i+term.idx)
         if sym.arity != 1: 
             raise InvalidFunctionException(sym)
         self.associated_classes_min[sym.name] = {}
@@ -116,7 +116,7 @@ class SchematicSubstitution(Substitution):
         self.initialize(term,sym.name,clean)
         self.updateType()
         self.occuringVariables.update(term.vars())
-        self.incrementors[sym]=lambda i: (Rec(sym,Idx(i)),insert(i,term))
+        self.incrementors[sym]=lambda i: (Rec(sym,i),insert(i,term))
     def initialize(self,t,sym,clean=False):
         if type(t) is Var:
             if clean: t.reset()
@@ -146,7 +146,7 @@ class SchematicSubstitution(Substitution):
             term.inducApp(lambda a:self.extractclasses(sym,a))
         elif type(term) is Rec:
             if term.func.name != sym: self.mutual[sym].add(term)
-            self.recursions[sym].add(term.idx.number)
+            self.recursions[sym].add(term.idx)
                 
     def makePrimitive(self):
         def makeSub(sym,idx,names,t):
@@ -165,7 +165,7 @@ class SchematicSubstitution(Substitution):
                 nVar = Var(nName,idxMod)
                 return nVar, mu+(t,Var(nName,idxMod))
             elif type(t) is Rec:
-                return Rec(t.func,Idx(1)), mu
+                return Rec(t.func,1), mu
         if not self.uniform: return None, None
         if self.primitive: return self, Substitution()
 
@@ -176,11 +176,11 @@ class SchematicSubstitution(Substitution):
         nu = Substitution()
         self.clear()
         self.ground(0)
-        pairs = {x.name:self.mapping[Rec(x,Idx(0))].instance() for x in self.symbols if not x in self.recursions.keys()}
+        pairs = {x.name:self.mapping[Rec(x,0)].instance() for x in self.symbols if not x in self.recursions.keys()}
         for i in range(0,len(symIdxPairs)):
             sym,idx = symIdxPairs[i]
             assLCls = self.associated_classes_min[sym].keys()
-            symTerm = nu(self.mapping[Rec(Func(sym,1),Idx(0))])
+            symTerm = nu(self.mapping[Rec(Func(sym,1),0)])
             assLClsNames = {}
             for x in assLCls:
                 mNames=Namer(x+sym)

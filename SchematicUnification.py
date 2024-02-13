@@ -44,7 +44,7 @@ class SchematicUnification:
 
     def unify_current(self):
         def updateRec2(b):
-            RecReplace = lambda x: Var(x.func.name,x.idx.number) if type(x) is Rec else x
+            RecReplace = lambda x: Var(x.func.name,x.idx) if type(x) is Rec else x
             return (b[0].inducAppRebuild(RecReplace),b[1].inducAppRebuild(RecReplace))
         current = self.current().subproblem.increment(self.SchematicSubstitution)
         if self.debug>2 or (self.count==0 and self.debug>0): 
