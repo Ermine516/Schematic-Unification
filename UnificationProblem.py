@@ -1,6 +1,6 @@
 import SchematicSubstitution as schsub
 from Substitution import Substitution as sub
-
+from Substitutable import Substitutable
 class nonUniforminputException(Exception):
     def __init__(self):
         pass
@@ -9,21 +9,50 @@ class nonUniforminputException(Exception):
         x = input()
         return False if x.lower() =="ok" else True
 
-class UnificationEquation:
+class UnificationEquation(Substitutable):
     def __init__(self,left,right,anno=""):
         self.left = left
         self.right = right
         self.iterstate = 2
         self.anno=anno
+
+#Magic Methods    
     def __iter__(self):
         self.iterstate=2
         return self
+    
     def __next__(self):
         if self.iterstate ==0:
             raise StopIteration
         ret = self.left if self.iterstate == 2 else self.right
         self.iterstate = self.iterstate - 1
         return ret
+    
+    def __getitem__(self,key):
+        if not isinstance(key, int): raise TypeError
+        if not key in [0,1]: raise KeyError
+        return self.left if key ==0 else self.right
+    
+    def __str__(self):
+        return "\t" +(self.anno+" : " if self.anno!="" else "")+ f"{self.left} =?= {self.right}\n"
+    
+    def __repr__(self):
+        return f"({repr(self.left)},{repr(self.right)})"
+    
+    def __eq__(self, other):
+        return isinstance(other, __class__) and self.left == other.left and self.right == other.right
+
+    def __hash__(self):
+        return hash((self.left,self.right))
+    
+    def __contains__(self,item):
+        return item is self.left or item is self.right
+
+#Abstract Methods
+    def handleSubstitution(self,sigma):
+        return UnificationEquation(sigma(self.left),sigma(self.right))
+
+#Class Specific Methods
     def duplicate(self):
         return UnificationEquation(self.left,self.right)
     def instance(self):
@@ -49,23 +78,9 @@ class UnificationEquation:
         ret = self.instance() 
         ret.right= ret.right.normalizedInstance()
         return ret
-    def handleSubstitution(self,sigma):
-        return UnificationEquation(sigma(self.left),sigma(self.right))
-    def __getitem__(self,key):
-        if not isinstance(key, int): raise TypeError
-        if not key in [0,1]: raise KeyError
-        return self.left if key ==0 else self.right
-    def __str__(self):
-        return "\t" +(self.anno+" : " if self.anno!="" else "")+ f"{self.left} =?= {self.right}\n"
-    def __repr__(self):
-        return f"({repr(self.left)},{repr(self.right)})"
-    def __eq__(self, other):
-        return isinstance(other, __class__) and self.left == other.left and self.right == other.right
-
-    def __hash__(self):
-        return hash((self.left,self.right))
-
-class UnificationProblem:
+   
+    
+class UnificationProblem(Substitutable):
     def __init__(self,debug=0):
         self.schSubs = schsub.SchematicSubstitution()
         self.prob = set()
@@ -87,6 +102,16 @@ class UnificationProblem:
     def __contains__(self,item):
         return item in self.prob
     
+#Abstract Methods
+    def handleSubstitution(self,sigma):
+        ret = UnificationProblem()
+        for eq in self.prob:
+            nEq = sigma(eq)
+            ret.addEquation(nEq.left,nEq.right)
+        return ret
+
+#Class Specific Methods
+
     def vars(self):
         ret = set()
         for x in self.prob:
@@ -101,12 +126,7 @@ class UnificationProblem:
         ss.clear()
         ss.ground(localRecs=self.recs())
         return ss(self.instance())
-    def handleSubstitution(self,sigma):
-        ret = UnificationProblem()
-        for eq in self.prob:
-            nEq = sigma(eq)
-            ret.addEquation(nEq.left,nEq.right)
-        return ret
+    
     def normalization(self):
         ret = self.instance() 
         for x in ret:

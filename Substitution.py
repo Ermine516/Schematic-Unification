@@ -1,12 +1,15 @@
 from Term import *
 from UnificationProblem import *
+from Substitutable import Substitutable
 
-class Substitution: 
+class Substitution(Substitutable): 
     def __init__(self,pairs=[]): 
         self.mapping = {}
         for x,y in pairs:
             self.mapping[x]=y
-   
+
+# Magic Methods
+  
     def __add__(self,b):
         if type(b) is tuple and len(b) == 2:
             self.addBinding(b[0],b[1])
@@ -14,6 +17,25 @@ class Substitution:
 
     def __str__(self):
         return "{"+ ",".join([ str(x)+" ==> "+str(y) for x,y in self.mapping.items()]) +"}"
+
+    def __call__(self, *args):
+        x= args[0] if len(args)==1 else None
+        if type(x) is set: return set(map(self,x))
+        elif type(x) is list: return list(map(self,x))
+        elif type(x) is tuple: return tuple(map(self,x))
+        elif isinstance(x,Substitutable): return x.handleSubstitution(self)
+        else: raise ValueError()
+
+# Abstract Methods
+    def handleSubstitution(self,sigma):
+        ret = Substitution()
+        for x in sigma.domain():
+            ret.addBinding(x,sigma.mapping[x].handleSubstitution(self))
+        for x in self.domain()-sigma.domain():
+            ret.addBinding(x,self.mapping[x])
+        return ret
+
+# Class Specific Methods
 
     def addBinding(self,x,t):
         if not type(x) is Var and not type(x) is Rec: return False
@@ -31,31 +53,7 @@ class Substitution:
     def range(self):
         return self.mapping.values()   
 
-    def applySub(self,x):
-        if type(x) is App:
-            return x.applyFunc(self.applySub)
-        elif type(x) is Var and x in self.domain():
-            return self.mapping[x].instance()
-        elif type(x) is Rec and x in self.domain():
-            return self.mapping[x].instance()
-        else:
-            return x.instance()
-    def __call__(self, *args):
-        if len(args) == 1 and type(args[0]) is set: return set(map(self,args[0]))
-        elif len(args) == 1 and type(args[0]) is list: return list(map(self,args[0]))
-        elif callable(getattr(args[0], "handleSubstitution", None)): return args[0].handleSubstitution(self)
-        elif len(args) == 1 and isinstance(args[0],Term): return self.applySub(args[0])
-        elif len(args) == 1 and type(args[0]) is Substitution:
-            sigma = args[0]
-            ret = Substitution()
-            for x in self.domain():
-                v,t = x,sigma.applySub(self.mapping[x])
-                if v != t:
-                    ret.addBinding(x,sigma.applySub(self.mapping[x]))
-            for x in sigma.domain():
-                if not x in self.domain():
-                    ret.addBinding(x,sigma.mapping[x])
-            return ret
-
-        else: raise ValueError()
+    
+    
+   
 

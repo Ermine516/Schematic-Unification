@@ -2,12 +2,13 @@ from __future__ import annotations
 from typing import Set, Tuple, Dict
 from collections import defaultdict
 from functools import reduce
+from Substitutable import Substitutable
 
 class Func:
     """Immutable data type representing a function symbol."""
     name: str
     arity: int
-    anchor: Term # using for normalization
+
     def __init__(self, name:str, arity:int):
         self.name = name
         self.arity = arity
@@ -27,7 +28,7 @@ class Func:
         else: return App(self, *args)
     def instance(self):
         return Func(self.name,self.arity)
-class Term:
+class Term(Substitutable):
     """Type of terms for which we can do unification and instantiation."""
     def inducAppRebuild(self,f):
         if isinstance(self,App):
@@ -42,6 +43,15 @@ class Term:
         else:
             return f(self)
     
+    def handleSubstitution(self,sigma):
+        if type(self) is App:
+            return self.applyFunc(sigma)
+        elif type(self) is Var and self in sigma.domain():
+            return sigma.mapping[self].instance()
+        elif type(self) is Rec and self in sigma.domain():
+            return sigma.mapping[self].instance()
+        else:
+            return self.instance()
     def depth(self):
         if isinstance(self,App):
             return 1+ (max((x.depth() for x in self.args)) if len( self.args)>0 else 0)
