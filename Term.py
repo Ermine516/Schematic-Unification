@@ -2,12 +2,16 @@ from __future__ import annotations
 from typing import Set, Tuple, Dict
 from collections import defaultdict
 from functools import reduce
+from Substitutable import *
+from TermAttr import TermAttr
+from Normalizable import Normalizable
+from abc import ABC
 
 class Func:
     """Immutable data type representing a function symbol."""
     name: str
     arity: int
-    anchor: Term # using for normalization
+
     def __init__(self, name:str, arity:int):
         self.name = name
         self.arity = arity
@@ -23,12 +27,11 @@ class Func:
 
     def __call__(self, *args):
         if len(args) != self.arity: raise ValueError()
-        if len(args) == 1 and type(args[0]) is Idx: return Rec(self, *args)
+        if len(args) == 1 and type(args[0]) is int: return Rec(self, *args)
         else: return App(self, *args)
-    def instance(self):
-        return Func(self.name,self.arity)
-class Term:
-    """Type of terms for which we can do unification and instantiation."""
+
+class Term(ABC):
+
     def inducAppRebuild(self,f):
         if isinstance(self,App):
             return self.func(*map(lambda x: x.inducAppRebuild(f),self.args))
@@ -41,47 +44,18 @@ class Term:
             return ret
         else:
             return f(self)
-    
-    def depth(self):
-        if isinstance(self,App):
-            return 1+ (max((x.depth() for x in self.args)) if len( self.args)>0 else 0)
-        else:
-            return 1 
-    def maxIdx(self):
-        if isinstance(self,App):
-            return  (max((x.maxIdx() for x in self.args))if len( self.args)>0 else 0)
-        elif isinstance(self,Var):
-            return self.idx
-        elif isinstance(self,Rec):
-            return self.idx.number
-
-    def occurs(self,t):
-        if self == t:
-            return True
-        elif type(t) is App:
-            return reduce(lambda a,b: a or self.occurs(b),t.args,False)
-        else:
-            False
-    def normalizedInstance(self):
-        if isinstance(self,App)  and self.anchor:
-            return self.anchor.instance()
-        elif isinstance(self,Var) or isinstance(self,Rec):
-            return self.instance()
-        elif isinstance(self,App):
-            return self.func.instance()(*map(lambda x: x.normalizedInstance(),self.args))
-
-
-
     pass
 
-class Var(Term):
+class Var(Term,Domainable,TermAttr,Substitutable,Normalizable):
     """Immutable named variable that is unifiable with any other term."""
     vc: str
     idx: int
     def __init__(self,vc,idx):
         self.vc = vc
         self.idx = idx
-    
+
+#Magic Methods
+  
     def __eq__(self, other):
         return isinstance(other, __class__) and self.vc == other.vc  and self.idx == other.idx
 
@@ -94,10 +68,8 @@ class Var(Term):
     def __repr__(self):
         return f"{self.vc.lower()}_{self.idx}"  
 
-    def strAlt(self,tag):
-        i= str(self.idx)
-        i = tag if i=="0" else tag+"+"+i
-        return f"{self.vc}"+f"[{i}]"
+# Abstract Methods 
+    def normalize(self): return self.instance()
 
     def recs(self): return set()
     
@@ -105,24 +77,48 @@ class Var(Term):
     
     def varsOcc(self): return [self]
     
-    def instance(self): return Var(self.vc,self.idx)
+    def recsOcc(self): return []
+    
+    def maxIdx(self): return self.idx
 
-class App(Term):
-    """Immutable fully-applied function term."""
+    def minIdx(self): return self.idx
+
+    def occurs(self,t)-> bool: return self==t
+
+    def depth(self)-> int: return 1
+
+    def instance(self)-> Var: return Var(self.vc,self.idx)
+
+    def applyFunc(self,f): return f(self.instance()) 
+
+    def handleSubstitution(self,sigma):
+        if self in sigma.domain():
+            return sigma.mapping[self].instance()
+        else:
+            return self.instance()
+# Class Specific Methods 
+
+    def strAlt(self,tag):
+        i= str(self.idx)
+        i = tag if i=="0" else tag+"+"+i
+        return f"{self.vc}"+f"[{i}]"
+
+class App(Term,TermAttr,Substitutable,Normalizable):
     func: Func
     args: Tuple[Term]
+
     def __init__(self, func,*args):
         assert func.arity == len(args)
         self.func = func
         self.args = tuple(args)
         self.anchor = None
 
+#Magic Methods
+
     def __str__(self):
         argsstr = "("+','.join([str(x) for x in self.args])+")" if len(self.args)>0 else ""
         return self.func.name+argsstr
-    def strAlt(self,tag):
-        argsstr = "("+','.join([ x.strAlt(tag) for x in self.args])+")" if len(self.args)>0 else ""
-        return self.func.name+argsstr
+    
     def __eq__(self, other: "App"):
         return isinstance(other, __class__) and self.func == other.func and self.args == other.args
 
@@ -135,10 +131,12 @@ class App(Term):
                 else '(' + ','.join(repr(a) for a in self.args) + ')')
         return f"{self.func.name}{args}"
 
-    def instance(self)-> App:
-        ret= self.func.instance()(*map(lambda x: x.instance(),self.args))
-        if self.anchor: ret.anchor=self.anchor
-        return ret 
+# Abstract Methods
+    def normalize(self):
+        if isinstance(self,App)  and self.anchor:
+            return self.anchor.instance()
+        else:
+            return self.func(*map(lambda x: x.normalize(),self.args))
     def recs(self)-> set[Rec]:
         ret=set()
         for t in self.args:
@@ -150,57 +148,70 @@ class App(Term):
         for t in self.args:
             ret.update(t.vars())
         return ret
+
     def varsOcc(self) -> set[Var]:
         ret = []
         for t in self.args:
             ret.extend(t.varsOcc())
         return ret
+
+    def recsOcc(self) -> set[Var]:
+        ret = []
+        for t in self.args:
+            ret.extend(t.recsOcc())
+        return ret
+
+    def maxIdx(self):
+        return  (max((x.maxIdx() for x in self.args))if len( self.args)>0 else 0)
+    
+    def minIdx(self):
+        return  (max((x.minIdx() for x in self.args))if len( self.args)>0 else 0)
+
+    def occurs(self,t):
+        if self == t: 
+            return True
+        else:
+            return reduce(lambda a,b: a or b.occurs(t),self.args,False)
+    
+    def depth(self):
+        return 1+ (max((x.depth() for x in self.args)) if len( self.args)>0 else 0)
+
+    def instance(self)-> App:
+        ret= self.func(*map(lambda x: x.instance(),self.args))
+        if self.anchor: ret.anchor=self.anchor
+        return ret 
+    
     def applyFunc(self,f):            
-            ret = self.func(*map(lambda x: f(x),self.args))
-            if self.anchor: ret.anchor=self.anchor
-            return ret
-class Idx(Term):
-    def __init__(self,idx):
-        self.number = idx
+        ret = self.func(*map(lambda x: f(x),self.args))
+        if self.anchor: ret.anchor=self.anchor
+        return ret
 
-    def __str__(self):
-        return str(self.number)
+    def handleSubstitution(self,sigma):
+        return self.applyFunc(sigma)
 
-    def __eq__(self, other):
-        return isinstance(other, __class__) and self.number == other.number
+# Class Specific Methods
 
-    def __hash__(self):
-        return hash((self.number))
+    def strAlt(self,tag):
+        argsstr = "("+','.join([ x.strAlt(tag) for x in self.args])+")" if len(self.args)>0 else ""
+        return self.func.name+argsstr
 
-    def __repr__(self):
-        return str(self.number) 
-
-class Rec(Term):
+class Rec(Term,Domainable,TermAttr,Substitutable,Normalizable):
     name: str
     func: Func
     arity: int
-    idx: Idx
-    class InvalidFunctionException(Exception):
-        def __init__(self,idx):
-            self.idx = idx
-        def handle(self):
-            print()
-            print("Invalid Arugment: ",str(self.idx)+" has type "+type(self.idx)+", should have type Idx.")
-            return None
+    idx: int
 
-    def __init__(self, func:Func, idx:Idx):
-        if not type(idx) is Idx: raise InvalidArgumentException(idx)
+    def __init__(self, func:Func, idx:int):
+        if not type(idx) is int: raise InvalidArgumentException(idx)
         assert func.arity == 1
         self.func = func
         self.name = func.name
         self.idx = idx
 
+#Magic Methods
+
     def __str__(self):
         return self.func.name+"_"+str(self.idx)
-
-
-    def strAlt(self,tag:str)->str:
-        return self.func.name+"_"+("{"+tag+"+"+str(self.idx)+"}")
 
     def __eq__(self, other: "Rec"):
         return isinstance(other, __class__) and self.func == other.func and self.idx == other.idx
@@ -211,15 +222,35 @@ class Rec(Term):
     def __repr__(self)->str:
         return self.func.name.lower()+"_"+"r"+"_"+str(self.idx)
 
-    def instance(self)-> Rec:
-        return Rec(self.func.instance(),Idx(self.idx.number))
+# Abstract Methods
+    def normalize(self): return self.instance()
+       
+    def recs(self)-> set[Rec]: return set([self])
 
-    def recs(self)-> set[Rec]:
-        return set([self])
+    def vars(self)-> set[Var]: return set()
 
-    def vars(self)-> set[Var]:
-        return set()
+    def varsOcc(self)-> set[Var]: return []
 
-    def varsOcc(self)-> set[Var]:
-        return []
-    
+    def recsOcc(self)-> set[Rec]: return [self]
+
+    def maxIdx(self)-> int: return self.idx
+
+    def minIdx(self)-> int: return self.idx
+
+    def occurs(self,t)-> bool: return self==t
+
+    def depth(self)-> int: return 1
+
+    def instance(self)-> Rec: return Rec(self.func,self.idx)
+
+    def applyFunc(self,f): return f(self.instance()) 
+
+    def handleSubstitution(self,sigma):
+        if self in sigma.domain():
+            return sigma.mapping[self].instance()
+        else:
+            return self.instance()
+#Class Specific Methods
+
+    def strAlt(self,tag:str)->str:
+        return self.func.name+"_"+("{"+tag+"+"+str(self.idx)+"}")

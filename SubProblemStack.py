@@ -47,7 +47,7 @@ class SubProblemStack:
         self.cycle = -1
         self.mapping =None
         self.debug = debug
-        self.dom = unifProb.schSubs 
+        self.dom = unifProb.schSubs
         stabProb = unifProb.increment(self.dom)
         self.stabBound = max(stabProb.depth(),stabProb.maxIdx())
         self.stabRatio = -1
@@ -106,7 +106,7 @@ class SubProblemStack:
         def backToVars(t):
             shape = t.name.split("_")
             if len(shape) == 2: return Var(shape[0].upper(),int(shape[1]))
-            else: return Rec(Func(shape[0].upper(),1),Idx(int(shape[2])))
+            else: return Rec(Func(shape[0].upper(),1),int(shape[2]))
         solver = clingo.Control([])
         solver.configuration.solve.models = 1
         solver.add('base',[], '\n'.join(prog))

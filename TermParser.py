@@ -151,7 +151,7 @@ class TermParser:
                 self.check_primitive[toks[0]]= set([int(toks[1])])
             else:
                 self.check_primitive[toks[0]].add(int(toks[1]))
-        return self.found_rec[toks[0]](Idx(int(toks[1])))
+        return self.found_rec[toks[0]](int(toks[1]))
     def basic(self,t):
         if type(t) is App:
             for x in t.args:
