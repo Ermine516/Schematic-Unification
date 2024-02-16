@@ -1,5 +1,4 @@
 from Term import *
-from functools import reduce
 from Solver import Solver
 from UnificationProblem import UnificationEquation as UEq
 from UnificationProblem import UnificationProblem as UProb
@@ -74,7 +73,11 @@ class ThetaUnification(Solver):
             for p1,p2,p3 in config.seen:
                 if  p1==uEq[0] and p2==uEq[0] and p3==uEq[1]: return True
             return False
-
+        def isRelevant(a):
+            for b in config.store:
+                if b[1].occurs(a[0]) or b[0]==a[1] or (not type(a[0]) is Rec and a[0]==b[0]):
+                    return True
+            return False
 #Checks useful for the unification procedure
         isTerm = lambda a: not type(a) is Var and not type(a) is Rec
         isVarRec =lambda a:  type(a) is Var or  type(a) is Rec
@@ -95,8 +98,6 @@ class ThetaUnification(Solver):
         transitivity = lambda uEq: lambda a: isVar(uEq[0]) and isVar(a[0]) and uEq[0]!= a[1] and not uEq.reflexive() and a[0]==uEq[0] and uEq[1]!=a[1] and unseen((uEq[0],a[1],uEq[1])) and unseen((uEq[0],uEq[1],a[1])) 
 
 # Checks whether the given binding 'a' is relevent to the binding stored in the configuration
-        relevantCheck = lambda a: (lambda b,c: b or c[1].occurs(a[0]) or c[0].occurs(c[1]) or (not type(a[0]) is Rec and a[0]==c[0])) 
-        isRelevant = lambda a: reduce(relevantCheck(a),config.store,False)  
         speseen=set()
         change =True
         while change:

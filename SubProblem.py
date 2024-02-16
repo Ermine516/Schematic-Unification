@@ -2,30 +2,16 @@ from Term import *
 from UnificationProblem import *
 from Substitution import *
 class SubProblem:
-    def getvars(t):
-        if type(t) is App:
-            ret=set()
-            for x in t.args: 
-                ret.update(SubProblem.getvars(x))
-            return ret
-        elif type(t) is Var:
-            return set([t]) 
-        else:
-            return set()  
-    def getrecs(t):
-        if type(t) is App:
-            ret=set()
-            for x in t.args: 
-                ret.update(SubProblem.getrecs(x))
-            return ret
-        elif type(t) is Rec:
-            return set([t]) 
-        else:
-            return set()  
+   
     def __len__(self):
         return len(self.subproblem)
     def __str__(self):
         return str(self.subproblem) 
+    def __iter__(self):
+        return self.subproblem.__iter__()
+    
+    def __next__(self):
+        return self.subproblem.__next__()
     def __init__(self,subproblem,futureRel=set()):
         self.subproblem = subproblem
         self.vars =set()
@@ -34,21 +20,24 @@ class SubProblem:
         self.stab =-1
         self.futureRel = futureRel
         self.cyclic = False
+        self.eqSubstitution = None
+        self.simplified= None
+        self.IrrSub =Substitution()
+
 # Collects all variables and recursion occurring in the problem
         for uEq in subproblem:
             for t in uEq:
-                self.vars.update(SubProblem.getvars(t))
-                self.recs.update(SubProblem.getrecs(t))
+                self.vars.update(t.vars())
+                self.recs.update(t.recs())
 # Collects all variables that are future relevent 
         for x in self.vars:
-            if not x.vc in self.futurevars.keys():
-                self.futurevars[x.vc] =  x 
-            if x.idx >self.futurevars[x.vc].idx: 
-                self.futurevars[x.vc] =  x 
+            if not x.vc in self.futurevars.keys(): self.futurevars[x.vc] =  x 
+            if x.idx >self.futurevars[x.vc].idx: self.futurevars[x.vc] =  x 
     def normalization(self):
         return SubProblem(self.subproblem.normalize(),futureRel=self.futureRel)
-
+    
     def simplify(self,dom):
+            if self.eqSubstitution: return  self.simplified
             def applys(s,t):    
                 if type(t) is App:
                     return t.func(*map(lambda x: applys(s,x),t.args))
@@ -101,6 +90,8 @@ class SubProblem:
                     furtureRelevant.add(x)
             newsubp=simp(newsubp)
             newsubp.clearReflex()
-            ret = SubProblem(newsubp)
-            ret.futureRel = furtureRelevant
+            ret = SubProblem(newsubp,futureRel = furtureRelevant )
+            self.futureRel = furtureRelevant
+            self.simplified= ret
+            self.eqSubstitution = simp
             return ret

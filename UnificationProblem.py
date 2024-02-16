@@ -3,7 +3,7 @@ from Substitution import Substitution as sub
 from Substitutable import Substitutable
 from TermAttr import TermAttr
 from Normalizable import Normalizable
-
+from Term import Term
 class nonUniforminputException(Exception):
     def __init__(self):
         pass
@@ -38,7 +38,7 @@ class UnificationEquation(Substitutable,TermAttr,Normalizable):
         return self.left if key ==0 else self.right
     
     def __str__(self):
-        return "\t" +(self.anno+" : " if self.anno!="" else "")+ f"{self.left} =?= {self.right}\n"
+        return "\t " +(self.anno+" : " if self.anno!="" else "")+ f"{self.left} =?= {self.right}\n"
     
     def __repr__(self):
         return f"({repr(self.left)},{repr(self.right)})"
@@ -143,53 +143,53 @@ class UnificationProblem(Substitutable,TermAttr,Normalizable):
     
     def recs(self):
         ret = set()
-        for x in prob:
+        for x in self:
             ret.update(x.recs())
         return ret
 
     def vars(self):
         ret = set()
-        for x in self.prob:
+        for x in self:
             ret.update(x.vars())
         return ret
 
     def varsOcc(self):
         ret = []
-        for x in self.prob:
+        for x in self:
             ret.append(x.varsOcc())
         return ret
 
     def recsOcc(self):
         ret = []
-        for x in self.prob:
+        for x in self:
             ret.append(x.recsOcc())
         return ret
 
     def maxIdx(self):
-        return max((x.maxIdx() for x in self.prob))
+        return max((x.maxIdx() for x in self))
 
     def minIdx(self):
-        return max((x.minIdx() for x in self.prob))
+        return max((x.minIdx() for x in self))
     
     def occurs(self,t):
-        for x in self.prob:
+        for x in self:
             if x.occurs(t): return True
         return False
 
     def depth(self):
-        return max((x.depth() for x in self.prob))
+        return max((x.depth() for x in self))
     
     def instance(self):
         inst = UnificationProblem()
         inst.schSubs = self.schSubs
         inst.PrimMap = self.PrimMap
         inst.debug = self.debug 
-        inst.prob = set([uEq.instance() for uEq in self.prob]) 
+        inst.prob = set([uEq.instance() for uEq in self]) 
         return inst
     
     def applyFunc(self,f):
         newUP = self.instance()
-        newUP.prob = set([uEq.applyFunc(f) for uEq in self.prob]) 
+        newUP.prob = set([uEq.applyFunc(f) for uEq in self]) 
         return newUP
 #Class Specific Methods
 
@@ -231,7 +231,7 @@ class UnificationProblem(Substitutable,TermAttr,Normalizable):
             if(self.debug>0):
                 print("Mapping used to transform Schematic substitution:")
                 print("\t",self.PrimMap)
-            self.prob = set([UnificationEquation(self.PrimMap(x),self.PrimMap(y)) for x,y in self.prob])
+            self.prob = set([UnificationEquation(self.PrimMap(x),self.PrimMap(y)) for x,y in self])
     def recs(self):
         ret = set()
         for uEq in self:
