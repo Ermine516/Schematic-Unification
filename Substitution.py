@@ -25,14 +25,17 @@ class Substitution(Substitutable):
             return x.__class__.__call__(map(self,x))
         else: 
             raise ValueError()
-
+    def __iter__(self):
+        return self.mapping.keys().__iter__()
+    def __next__(self):
+        return self.mapping.keys().__next__()
 # Abstract Methods
     def handleSubstitution(self,sigma):
         ret = Substitution()
-        for x in sigma.domain():
-            ret.addBinding(x,sigma.mapping[x].handleSubstitution(self))
-        for x in self.domain()-sigma.domain():
-            ret.addBinding(x,self.mapping[x])
+        for x in self.domain():
+            ret.addBinding(x,sigma(self.mapping[x]))
+        for x in sigma.domain()-self.domain():
+            ret.addBinding(x,sigma.mapping[x])
         return ret
 
 # Class Specific Methods

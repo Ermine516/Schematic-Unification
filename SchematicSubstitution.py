@@ -1,16 +1,15 @@
 from Term import *
 from Namer import Namer
 from Substitution import * 
-
-class SchematicSubstitution(Substitution):
-    class InvalidFunctionException(Exception):
+from collections import defaultdict
+class InvalidFunctionException(Exception):
         def __init__(self,f):
             self.func = f
         def handle(self):
             print()
             print("Invalid Function: ",self.func.name+"/"+(self.func.arity))
             return None
-    class InvalidRecursionException(Exception):
+class InvalidRecursionException(Exception):
         def __init__(self,w,c):
             self.w =w
             self.c= c
@@ -18,6 +17,8 @@ class SchematicSubstitution(Substitution):
             print()
             print("Invalid Recursion: the interpreted class ",self.w+" occured in the definition of the iterpreted class "+self.c)
             return None
+class SchematicSubstitution(Substitution):
+    
     def __init__(self):
         super().__init__()
         self.symbols = []
@@ -60,11 +61,12 @@ class SchematicSubstitution(Substitution):
         return self.occuringVariables
     def updateType(self):
         if len(self.mutual.keys()) !=0:
-           self.primitive= False
-           self.uniform= False
-           self.simple = False
-           self.nesting = True
-           raise self.InvalidRecursionException(term.func.name,sym)
+            self.primitive= False
+            self.uniform= False
+            self.simple = False
+            self.nesting = True
+            for x in self.mutual.keys():
+                raise self.InvalidRecursionException(x,self.mutual[x])
         for s in self.recursions.values():
             if len(s) > 1:
                 self.primitive= False
@@ -73,7 +75,7 @@ class SchematicSubstitution(Substitution):
                 self.primitive= False
 
     def associated_classes(self,name):
-        return self.associated_classes_max[keys].keys()
+        return self.associated_classes_max[name].keys()
 
     def isFutureRelevant(self,r,x):
         if x.vc in self.associated_classes_min[r.func.name].keys():
@@ -143,7 +145,7 @@ class SchematicSubstitution(Substitution):
                 self.associated_classes_min[sym][term.vc] = min(term.idx,self.associated_classes_min[sym][term.vc])
                 self.associated_classes_max[sym][term.vc] = max(term.idx,self.associated_classes_max[sym][term.vc])
         elif type(term) is App:
-            term.inducApp(lambda a:self.extractclasses(sym,a))
+            term.applyFunc(lambda a:self.extractclasses(sym,a))
         elif type(term) is Rec:
             if term.func.name != sym: self.mutual[sym].add(term)
             self.recursions[sym].add(term.idx)

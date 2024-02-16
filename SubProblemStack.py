@@ -51,9 +51,8 @@ class SubProblemStack:
         stabProb = unifProb.increment(self.dom)
         self.stabBound = max(stabProb.depth(),stabProb.maxIdx())
         self.stabRatio = -1
-
         self.subproblems = [SubProblem(unifProb)]
-    
+        self.iterstate =0
     def __len__(self):
         return len(self.subproblems)-1
     
@@ -63,6 +62,16 @@ class SubProblemStack:
         else:
             raise TypeError(f"Type of val is {type(val)} and should be SubProblem")
         return self
+    def __iter__(self):
+        self.iterstate=0
+        return self
+    
+    def __next__(self):
+        if self.iterstate ==len(self)+1: raise StopIteration
+        ret = self.subproblems[self.iterstate]
+        self.iterstate = self.iterstate +1
+        return ret
+    
     def futureOverlap(self,current,other):
         for r in current.recs:
             for vc,m in other.futurevars.items():

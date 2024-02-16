@@ -1,6 +1,3 @@
-from typing import Set, Tuple, Dict
-from collections import defaultdict
-from functools import reduce
 from Term import *
 from abc import ABC, abstractmethod
 import time

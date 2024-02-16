@@ -5,6 +5,7 @@ from Solver import Solver
 from functools import reduce
 from Term import *
 from UnificationProblem import *
+from Substitution import Substitution
 class UnionFindNode:
     val: Term
     rep: UnionFindNode    
@@ -69,6 +70,7 @@ class MM(Solver):
 # mm has the structure (variables,terms,subterm at position,Symbols found)
     def mmeq(self,mm,term):
         vars,terms,matches,syms = mm
+        #print("here",term,isinstance(term,Rec))
         if type(term) is Var:
             asVar = self.getrep(term)
 # remove occurances of variables found during decomposition
@@ -89,6 +91,7 @@ class MM(Solver):
         if len(syms)>1: raise Solver.ClashExeption(syms,ts,self.start_time)
         elif len(vars)>0: return (reduce(lambda a,b:  a.union(b),vars),[(set(vars),terms)])
         else:
+           # print(cur,ts,vars,terms,matches,syms)
             sym =syms.pop()
             args,front=[None]*sym.arity,[]
             for x,y,z in map(lambda a: (a[0],*self.decompose(cur,a[1])),matches.items()):
@@ -144,10 +147,36 @@ class MM(Solver):
             for idx in self.probVarsDict[vc]:
                 v = self.probVarsDict[vc][idx]
                 if v!= v.find():
-                    self.solved.add((v,v.find()))
+                    self.solved.add((v,v.find()))    
+        unifier = self.buildUnifier()
         self.clear()
-        return dict(self.solved), None, None
-
+        return unifier, None, None
+    
+    def buildUnifier(self):
+        def clean(t):
+            if type(t) is UnionFindNode:
+                return t.find().val
+            elif type(t) is App:
+                return t.func(*map(lambda a:clean(a), t.args))
+            else: 
+                return t
+        eqclasses = {}
+        maxIdx = {}
+        unifier = Substitution()
+        for v in self.probVarsSet:
+            if not v.find().val in eqclasses.keys(): 
+                eqclasses[v.find().val]=set([v.val,v.find().val])
+                maxIdx[v.find().val] = v.val if v.val.idx == max(v.val.idx,v.find().val.idx) else v.find().val
+            else:  
+                eqclasses[v.find().val].add(v.val)
+                maxIdx[v.find().val] = v.val if v.val.idx == max(v.val.idx, maxIdx[v.find().val].idx) else  maxIdx[v.find().val]
+        for v,t in self.solved:
+            v1,t1 = v.val,clean(t)
+            if len(v.terms) != 0:
+                unifier += (maxIdx[v.find().val],t1)
+            for b in eqclasses[v.find().val]:
+                unifier += (b,maxIdx[v.find().val])
+        return unifier
     def preprocess(self,problem):
         def insert(t,count):
             if t.vc in self.probVarsDict.keys() and not t.idx in self.probVarsDict[t.vc].keys(): 
@@ -173,7 +202,6 @@ class MM(Solver):
         for x in self.probVarsSet:
             if x.find().occ == 0: self.var_reps.add(x.find())
             self.tosolve.add(x.find())
-
     def clear(self):
         self.probVarsDict = {}
         self.probVarsSet = set()
