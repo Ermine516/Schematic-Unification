@@ -36,6 +36,68 @@ class SchematicUnification:
 
         if self.debug >1: self.print_final_results()  
         if self.debug in [0,1]: print(f"\t unifiable --- {round(time.time() - start_time,3)} seconds ---")
+
+#This is the code for building the first part of a unifier 
+               
+#         sigma=Substitution()
+#         tau = Substitution()
+#         sigmaEQ = Substitution()
+
+#         Xi = SchematicSubstitution()
+#         recNames = Namer("NR")
+# #We create an instance of the initial problem
+#         initProb = self.subproblems.subproblems[0].subproblem.instance()
+# # We build a substitution into the recs starting from the initial 
+# #problem until the problem which starts the cycle. 
+#         for i in range(0,self.subproblems.cycle):
+# # We will remove bindings associated with recsSet later
+#             recsSet= initProb.recs()
+# # We build the Schematic substitution instance based on recsSet,
+# # update sigma and apply to initProb
+#             self.SchematicSubstitution.clear()
+#             self.SchematicSubstitution.ground(localRecs=recsSet)
+#             sigma = self.SchematicSubstitution(sigma)
+#             initProb= self.SchematicSubstitution(initProb)
+# # Remove old bindings from the composition
+#             if i!=0:
+#                 for x in recsSet: sigma.removebinding(x)
+# # We compose sigma  with the irrelevant substitutions
+#         for i,x in enumerate(self.subproblems):
+#             if i< self.subproblems.cycle:sigma=sigma(x.IrrSub)
+#             tau = tau(x.IrrSub)
+#             sigmaEQ = sigmaEQ(x.eqSubstitution)
+# # We get the relevant recursions we can build Xi
+#         partUnifProb = sigma(self.subproblems.subproblems[0].subproblem.instance())
+#         pupRecs = partUnifProb.recs()
+# # We build a substitution and compose it with sigma
+#         newRecs = Substitution()
+#         newRecsDict = {}
+#         for x in pupRecs:
+#             newRecs += (x,Rec(Func(recNames.current_name(),1),0))
+#             newRecsDict[x] =Func(recNames.current_name(),1)
+#             recNames.next_name()
+# # At this point we are not done with sigma
+# # as there may be new recs introduced for variables in the initial problem
+#         sigma=sigma(newRecs)
+#         sigma=sigma(sigmaEQ)
+#         print(sigma)
+# # I am assuming primitive here
+#         newRecsterms ={}
+#         steps = (len(self.subproblems)-self.subproblems.cycle)+1
+#         print(steps)
+#         for x in pupRecs:
+#             t = x.instance()
+#             for i in range(0,steps):
+#                 self.SchematicSubstitution.clear()
+#                 self.SchematicSubstitution.ground(localRecs=t.recs())
+#                 t = self.SchematicSubstitution(t)
+#             t = sigmaEQ(t)
+#             for r in t.recs():
+#                 temp = Substitution()
+#                 temp += (r,Rec(newRecsDict[x],steps))
+#                 t = temp(t)
+#             newRecsterms[x]=t
+#         print(newRecsterms[x])
         return True , (time.time() - start_time)
 
     def unify_current(self):
