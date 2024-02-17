@@ -13,6 +13,11 @@ class nonUniforminputException(Exception):
         return False if x.lower() =="ok" else True
 
 class UnificationEquation(Substitutable,TermAttr,Normalizable):
+    left        : Term
+    right       : Term
+    iterstate   : int
+    anno        : str
+    
     def __init__(self,left,right,anno=""):
         self.left = left
         self.right = right
