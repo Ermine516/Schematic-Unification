@@ -15,7 +15,7 @@ class InvalidRecursionException(Exception):
             self.c= c
         def handle(self):
             print()
-            print("Invalid Recursion: the interpreted class ",self.w+" occured in the definition of the iterpreted class "+self.c)
+            print("Invalid Recursion: the interpreted class ",self.w+" occured in the definition of the iterpreted class "+str(self.c))
             return None
 class SchematicSubstitution(Substitution):
     
@@ -66,7 +66,7 @@ class SchematicSubstitution(Substitution):
             self.simple = False
             self.nesting = True
             for x in self.mutual.keys():
-                raise self.InvalidRecursionException(x,self.mutual[x])
+                 raise InvalidRecursionException(x,self.mutual[x])
         for s in self.recursions.values():
             if len(s) > 1:
                 self.primitive= False

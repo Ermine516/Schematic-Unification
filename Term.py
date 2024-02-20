@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple
+from typing import Any, Tuple
 from functools import reduce
 from Substitutable import *
 from Substitution import Substitution
@@ -8,7 +8,6 @@ from Normalizable import Normalizable
 from abc import ABC
 
 class Func:
-    """Immutable data type representing a function symbol."""
     name: str
     arity: int
 
@@ -18,7 +17,7 @@ class Func:
 
 #Magic Methods
       
-    def __eq__(self, other)-> bool:
+    def __eq__(self, other:Func)-> bool:
         return isinstance(other, __class__) and self.name == other.name and self.arity == other.arity
 
     def __hash__(self):
@@ -39,62 +38,65 @@ class Var(Term,Domainable,TermAttr,Substitutable,Normalizable):
     vc: str
     idx: int
     def __init__(self,vc: str,idx: int):
+        if not type(idx) is int: raise TypeError()
         self.vc = vc
         self.idx = idx
 
 #Magic Methods
   
-    def __eq__(self, other):
+    def __eq__(self, other:Var) -> bool:
         return isinstance(other, __class__) and self.vc == other.vc  and self.idx == other.idx
 
     def __hash__(self):
         return hash((self.vc,self.idx))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.vc}"+f"[{self.idx}]"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.vc.lower()}_{self.idx}"  
 
 # Abstract Methods 
-    def normalize(self): return self.instance()
 
-    def recs(self): return set()
-    
-    def vars(self): return set([self])
-    
-    def varsOcc(self): return [self]
-    
-    def recsOcc(self): return []
-    
-    def maxIdx(self): return self.idx
+    # From Substitutable 
+    def handleSubstitution(self,sigma:Substitution)-> Term:
+        if self in sigma.domain(): return sigma.mapping[self].instance()
+        else: return self.instance()
 
-    def minIdx(self): return self.idx
+    # From Normalizable 
+    def normalize(self) -> Var: return self.instance()
+    
+    # From TermAttr
+    def recs(self) -> set[Var]: return set()
+    
+    def vars(self) -> set[Var]: return set([self])
+    
+    def varsOcc(self) -> list[Var]: return [self]
+    
+    def recsOcc(self) -> list[Rec]: return []
+    
+    def maxIdx(self) -> int: return self.idx
+ 
+    def minIdx(self) -> int: return self.idx
 
-    def occurs(self,t)-> bool: return self==t
+    def occurs(self,t:Var)-> bool: return self==t
 
     def depth(self)-> int: return 1
 
     def instance(self)-> Var: return Var(self.vc,self.idx)
 
-    def applyFunc(self,f): return f(self.instance()) 
-
-    def handleSubstitution(self,sigma):
-        if self in sigma.domain(): return sigma.mapping[self].instance()
-        else: return self.instance()
+    def applyFunc(self,f:function)-> Any: return f(self.instance()) 
 
 # Class Specific Methods 
 
-    def strAlt(self,tag):
-        i= str(self.idx)
-        i = tag if i=="0" else tag+"+"+i
-        return f"{self.vc}"+f"[{i}]"
+    def strAlt(self,tag:str)-> str:
+        return f"{self.vc}"+f"[{ tag if self.idx== 0 else tag+"+"+str(self.idx)}]"
 
 class App(Term,TermAttr,Substitutable,Normalizable):
     func: Func
     args: Tuple[Term]
 
-    def __init__(self, func,*args):
+    def __init__(self, func:Func,*args:Tuple[Term]):
         assert func.arity == len(args)
         self.func = func
         self.args = tuple(args)
@@ -102,34 +104,30 @@ class App(Term,TermAttr,Substitutable,Normalizable):
 
 #Magic Methods
 
-    def __str__(self):
+    def __str__(self) -> str:
         argsstr = "("+','.join([str(x) for x in self.args])+")" if len(self.args)>0 else ""
         return self.func.name+argsstr
     
-    def __eq__(self, other: "App"):
+    def __eq__(self, other: App) -> bool:
         return isinstance(other, __class__) and self.func == other.func and self.args == other.args
 
     def __hash__(self):
         return hash((self.func, self.args))
 
 
-    def __repr__(self):
-        args = ("" if not self.args
-                else '(' + ','.join(repr(a) for a in self.args) + ')')
-        return f"{self.func.name}{args}"
+    def __repr__(self) -> str:
+        return f"{self.func.name}{ ("" if not self.args else '(' + ','.join(repr(a) for a in self.args) + ')')}"
 
 # Abstract Methods
 
     # From Substitutable 
-    def handleSubstitution(self, sigma:Substitution):
+    def handleSubstitution(self, sigma:Substitution)-> Term:
         return self.applyFunc(sigma)
     
     # From Normalizable 
-    def normalize(self):
-        if isinstance(self,App)  and self.anchor:
-            return self.anchor.instance()
-        else:
-            return self.func(*map(lambda x: x.normalize(),self.args))
+    def normalize(self) -> Term:
+        if isinstance(self,App)  and self.anchor: return self.anchor.instance()
+        else: return self.func(*map(lambda x: x.normalize(),self.args))
     
     # From TermAttr
     def recs(self)-> set[Rec]:
@@ -156,20 +154,18 @@ class App(Term,TermAttr,Substitutable,Normalizable):
             ret.extend(t.recsOcc())
         return ret
 
-    def maxIdx(self):
+    def maxIdx(self) -> int:
         return  (max((x.maxIdx() for x in self.args))if len( self.args)>0 else 0)
     
-    def minIdx(self):
+    def minIdx(self) -> int:
         return  (max((x.minIdx() for x in self.args))if len( self.args)>0 else 0)
 
     #checks if t occurs in self
-    def occurs(self,t):
-        if self == t: 
-            return True
-        else:
-            return reduce(lambda a,b: a or b.occurs(t),self.args,False)
+    def occurs(self,t: Term) -> bool:
+        if self == t: return True
+        else: return reduce(lambda a,b: a or b.occurs(t),self.args,False)
     
-    def depth(self):
+    def depth(self)-> int:
         return 1+ (max((x.depth() for x in self.args)) if len( self.args)>0 else 0)
 
     def instance(self)-> App:
@@ -177,7 +173,7 @@ class App(Term,TermAttr,Substitutable,Normalizable):
         if self.anchor: ret.anchor=self.anchor
         return ret 
     
-    def applyFunc(self,f) -> App:            
+    def applyFunc(self,f:function) -> App:            
         ret = self.func(*map(lambda x: x.applyFunc(f),self.args))
         if self.anchor: ret.anchor=self.anchor
         return ret
@@ -185,7 +181,7 @@ class App(Term,TermAttr,Substitutable,Normalizable):
 
 # Class Specific Methods
 
-    def strAlt(self,tag):
+    def strAlt(self,tag:str)-> str:
         argsstr = "("+','.join([ x.strAlt(tag) for x in self.args])+")" if len(self.args)>0 else ""
         return self.func.name+argsstr
 
@@ -217,11 +213,14 @@ class Rec(Term,Domainable,TermAttr,Substitutable,Normalizable):
         return self.func.name.lower()+"_"+"r"+"_"+str(self.idx)
 
 # Abstract Methods
-    def normalize(self)-> Term: return self.instance()
     
+    # From Substitutable 
     def handleSubstitution(self,sigma:Substitution) -> Term:
         if self in sigma.domain(): return sigma.mapping[self].instance()
         else: return self.instance()
+    
+    # From Normalizable 
+    def normalize(self)-> Term: return self.instance()
         
     def recs(self) -> set[Rec]: return set([self])
 
