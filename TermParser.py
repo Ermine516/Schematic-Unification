@@ -114,7 +114,7 @@ class TermParser:
         return None
     def is_interpreted(self,s,loc,toks):
         if not toks[0] in self.found_rec.keys():
-            UnusedVariableDefinitionWarning(toks[0]).handle()
+           raise UnusedVariableDefinitionWarning(toks[0])
         else: return self.found_rec[toks[0]]
     def make_var(self,s,loc,toks):
         if not toks[0] in self.symbols.keys(): self.symbols[toks[0]] = Var

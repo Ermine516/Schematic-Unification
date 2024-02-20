@@ -10,7 +10,7 @@ from Test import *
 import argparse
 import time
 
-CodeDescription='Algorithms for deciding unifiability of Linear Primitive Unification Problems.'
+CodeDescription='Algorithm for deciding unifiability of Uniform Schematic Unification Problems.'
 
 def parsing_CMD():
         parser = argparse.ArgumentParser(description=CodeDescription)
@@ -29,6 +29,9 @@ def unify():
                 unifProb.addMappings(mappings.items())
                 unifProb.addEquations(unif)
                 unifProb.makePrimitive()
+            except UnusedVariableDefinitionWarning as e:
+                e.handle()
+                return None               
             except ArityMismatchException as e:
                 e.handle()
                 return None
@@ -44,7 +47,7 @@ def unify():
             except noUnificationProblemException as e:
                 e.handle()
                 return None
-            except SchematicSubstitution.InvalidRecursionException as e:
+            except InvalidRecursionException as e:
                 e.handle()
                 return None
             except OutofOrderInputException as e:

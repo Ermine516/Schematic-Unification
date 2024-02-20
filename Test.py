@@ -1,6 +1,5 @@
 from SchematicUnification import *
 from SchematicSubstitution import *
-from functools import reduce
 from TermParser import *
 from os import listdir
 import time
