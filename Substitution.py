@@ -57,7 +57,10 @@ class Substitution(Substitutable):
     def range(self):
         return self.mapping.values()   
 
-    
-    
-   
+    def restriction(self,f):
+        sigma = Substitution()
+        for x in self.mapping:
+            if f(x): 
+                sigma.addBinding(x,self.mapping[x])
+        return sigma
 
