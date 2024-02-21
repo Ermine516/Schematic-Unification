@@ -176,6 +176,7 @@ class MM(Solver):
                 unifier += (maxIdx[v.find().val],t1)
             for b in eqclasses[v.find().val]:
                 unifier += (b,maxIdx[v.find().val])
+        
         return unifier
     def preprocess(self,problem):
         def insert(t,count):

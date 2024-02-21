@@ -21,6 +21,7 @@ class SchematicUnification:
     def unif(self,start_time=-1):
         self.foSolver.setTime(start_time)
         self.SchSolver.setTime(start_time)
+        if self.debug >0: self.print_initial_problem()
         try:
             while self.subproblems.Open(start_time):
                 try:
@@ -104,25 +105,33 @@ class SchematicUnification:
         def updateRec2(b):
             RecReplace = lambda x: Var(x.func.name,x.idx) if isinstance(x,Rec) else x
             return (b[0].applyFunc(RecReplace),b[1].applyFunc(RecReplace))
-        current = self.current().subproblem.increment(self.SchematicSubstitution)
-        if self.debug>2 or (self.count==0 and self.debug>0): 
+        current = self.current().subproblem.increment(self.SchematicSubstitution) #if self.count>0 else self.current().subproblem
+        if self.debug>2: 
             self.print_current_problem(self.current())
             print()
         if self.debug>4: print("Theta Unification:\n")
         store, context,recs = self.SchSolver.unify(current)
-
         if self.debug>3: print("First-order Syntactic Unification:\n")
         self.foSolver.count = self.count
         checkCycles = set(map(updateRec2,context))
-        results , _, _ =self.foSolver.unify(checkCycles)
-        self.current().IrrSub = Substitution()
-        for x in results:
-            check = True
-            for uEq in store:
-                if x == uEq[0]: check = False 
-                if type(uEq[0]) is Rec and x.vc == uEq[0].name: check = False 
-            if check: self.current().IrrSub+= (x,results(x))
-        
+        self.foSolver.unify(checkCycles)
+## Dropped everything which has to do with Store 
+        cleaned_context= set(filter(lambda a:  not a in store and not type(a[0]) is Rec , context)) 
+        contextVars = [x[0] for x in cleaned_context]
+## Transform Rec into Var
+        cleaned_context= set(map(updateRec2,cleaned_context))
+## Run MM again to get a unifier
+        results , _, _ =self.foSolver.unify(cleaned_context)
+## Build substitution without mappings to Rec
+## Note, a bit of randomness below. May output different equivalent results
+        cleanresults = results.restriction(lambda a:not Func(a.vc,1) in self.SchematicSubstitution.symbols )
+## Build substitution with only mappings to Rec
+        FromDom = results.restriction(lambda a: Func(a.vc,1) in self.SchematicSubstitution.symbols )
+## Build substitution by composing the previous two and removing mappings to Rec
+        results = FromDom(cleanresults).restriction(lambda a:not Func(a.vc,1) in self.SchematicSubstitution.symbols )
+## We may have derived Store bindings in the process.
+        finRes = results.restriction(lambda a: a in contextVars)
+        self.current().IrrSub = finRes
         return  store,recs
 
     def current(self):
@@ -151,22 +160,21 @@ class SchematicUnification:
             print("----------------------------------------------------------")
             print("----------------------------------------------------------")
     
-    
-    def print_current_problem(self,current):
-        if self.count == 0:
-            print("Schematic Unification Problem:\n" )
-            for x,y in current:
-                print(f"\t{x} =?= {y}\n")
-            print()
-            print("Schematic Substitution:\n")
-            self.SchematicSubstitution.clear()
-            self.SchematicSubstitution.ground()
-            for x in self.SchematicSubstitution.mapping.keys():
-                print("\t"+ x.name+"_i"+" <== "+self.SchematicSubstitution.mapping[x].strAlt("i"))
-            print()
+    def print_initial_problem(self):
+        print("Schematic Unification Problem:\n" )
+        for x,y in self.subproblems.subproblems[0]:
+            print(f"\t{x} =?= {y}\n")
+        print()
+        print("Schematic Substitution:\n")
+        self.SchematicSubstitution.clear()
+        self.SchematicSubstitution.ground()
+        for x in self.SchematicSubstitution.mapping.keys():
+            print("\t"+ x.name+"_i"+" <== "+self.SchematicSubstitution.mapping[x].strAlt("i"))
+        print()
+        print("==========================================================")
 
-        else:
-            print("Problem "+str(self.count)+":")
-            print(current)
+    def print_current_problem(self,current):
+        print("Problem "+str(self.count)+":")
+        print(current)
         print("==========================================================")
     

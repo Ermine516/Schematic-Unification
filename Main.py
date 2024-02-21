@@ -14,7 +14,7 @@ CodeDescription='Algorithm for deciding unifiability of Uniform Schematic Unific
 
 def parsing_CMD():
         parser = argparse.ArgumentParser(description=CodeDescription)
-        parser.add_argument('procedure', choices=['Test','Unif'], help='Currently either Test or Unification')
+        parser.add_argument('procedure', choices=['Test','Unif','Unfold'], help='Currently either Test or Unification')
         parser.add_argument('-f',metavar="file.su", default="",help='The unification problem to Solve. Igored when in Test mode')
         parser.add_argument('--debug',metavar="int",type=int,choices=[-1,0,1,2,3,4,5,6],default=1,help='Debug level: 0 is the lowest and 3 is the highest.')
 
@@ -63,9 +63,13 @@ def unify():
     except FileNotFoundError as e:
         print("A file must be provide (python main.py Unif -f file.su) or run test mode (python main.py Test) ")
 
+def unfold():
+    print("plan to implement")
 if __name__ == "__main__":
     args= parsing_CMD()
     if args.procedure=="Test":
         Test.test()
     elif args.procedure=="Unif":
         unify()
+    elif args.procedure=="Unfold":
+        unfold()

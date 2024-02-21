@@ -66,7 +66,7 @@ class SchematicSubstitution(Substitution):
             self.simple = False
             self.nesting = True
             for x in self.mutual.keys():
-                 raise InvalidRecursionException(x,self.mutual[x])
+                raise InvalidRecursionException(x,self.mutual[x])
         for s in self.recursions.values():
             if len(s) > 1:
                 self.primitive= False

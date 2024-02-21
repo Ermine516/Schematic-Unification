@@ -26,5 +26,8 @@ class Test:
                 su = SchematicUnification(unifProb,-1)
                 start_time = time.time()
                 worked, tottime = su.unif(time.time())
-                print(f"Test {str(i)} {"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)} Seconds")
+                if i<10:
+                    print(f"Test {str(i)}  {"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)} Seconds")
+                else:
+                    print(f"Test {str(i)} {"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)}  Seconds")
 

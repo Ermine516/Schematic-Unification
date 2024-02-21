@@ -89,13 +89,13 @@ class SubProblemStack:
         except StabilityViolationException as e:
             return e.handle(self.debug,start_time,self.Top())
     def close(self):
+        left = self.Top()
+        leftNorm = left.simplify(self.dom).normalization()
+        left.stab = len(leftNorm.subproblem.vars())
         for x in reversed(range(0, len(self))):
-            left = self.Top()
             right = self.subproblems[x]
             if  x!=len(self) and not self.futureOverlap(left,right):
                 if self.debug > 5: print(f"computing Subsumption between {x} and {len(self)}\n")
-                leftNorm = left.simplify(self.dom).normalization()
-                left.stab = len(leftNorm.subproblem.vars())
                 rightNorm = right.simplify(self.dom).normalization()
                 if len(self) >= self.stabBound and self.stabRatio==-1:
                     for p in self.subproblems: 

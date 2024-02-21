@@ -124,12 +124,15 @@ class ThetaUnification(Solver):
                 elif store_T_R(uEq):
                     if self.debug>4: print(f"\t Store-Θ-R: {str(uEq)}")
                     config.updateStore(uEq)
+                    config.addSeen(uEq)
                 elif store_T_D(uEq):
                     if self.debug>4: print(f"\t Store-Θ-D: {str(uEq)}")
                     config.updateStore(uEq)
+                    config.addSeen(uEq)
                 elif  store_T_F(uEq):
                     if self.debug>4: print(f"\t Store-Θ-F: {str(uEq)}")
                     config.updateStore(uEq)
+                    config.addSeen(uEq)
                 else:
                         for uEq2 in list(filter(transitivity(uEq),config.active)):   
                             if self.debug>4: print(f"\t Transitivity: {str(uEq)} and {str(uEq2)}")
