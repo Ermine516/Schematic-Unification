@@ -115,7 +115,7 @@ class SubProblemStack:
         def backToVars(t):
             shape = t.name.split("_")
             if len(shape) == 2: return Var(shape[0].upper(),int(shape[1]))
-            else: return Rec(Func(shape[0].upper(),1),int(shape[2]))
+            else: return Rec(shape[0].upper(),int(shape[2]))
         solver = clingo.Control([])
         solver.configuration.solve.models = 1
         solver.add('base',[], '\n'.join(prog))
@@ -184,6 +184,7 @@ class SubProblemStack:
 
     def print_closures(self):
         if self.mapping:
+
             print("Recursion Found "+str(len(self))+" => "+str(self.cycle)+ " {"+ ' , '.join([f"{x}=>{y}" for x,y in self.mapping]) +"}")
             print()
             print("Subproblem "+str(len(self))+":")

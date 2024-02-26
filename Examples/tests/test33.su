@@ -1,4 +1,4 @@
-## A Non-linear Uniform example that unifies
+## A Non-linear Uniform example, does not unify
 
 f(X[4],L_0) =?= f(f(f(W[0],f(R_3,W[4])),R_0),f(S_0,f(W[1],W[2])))
 R <== f(f(W[0],W[4]),R_7)

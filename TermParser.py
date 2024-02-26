@@ -110,12 +110,13 @@ class TermParser:
             raise MappingReAssignmentException(toks,(toks[0],self.mappings[toks[0]]))
         else:
             self.mappings[toks[0]]= toks[1]
-        self.mapNames.add(toks[0].name)
+        self.mapNames.add(toks[0])
         return None
     def is_interpreted(self,s,loc,toks):
         if not toks[0] in self.found_rec.keys():
            raise UnusedVariableDefinitionWarning(toks[0])
-        else: return self.found_rec[toks[0]]
+        else: 
+            return toks[0]
     def make_var(self,s,loc,toks):
         if not toks[0] in self.symbols.keys(): self.symbols[toks[0]] = Var
         elif self.symbols[toks[0]] != Var: 
@@ -145,23 +146,14 @@ class TermParser:
         if not toks[0] in self.symbols.keys(): self.symbols[toks[0]] = Rec
         elif self.symbols[toks[0]] != Rec: 
             raise  SymbolTypeMisMatchException(toks[0],self.symbols[toks[0]],Rec)
-        if not toks[0] in self.found_rec.keys():self.found_rec[toks[0]] =Func(toks[0],1)
+        if not toks[0] in self.found_rec.keys():self.found_rec[toks[0]] = {}
+        if not toks[1] in self.found_rec[toks[0]].keys():self.found_rec[toks[0]][toks[1]] = Rec(toks[0],int(toks[1]))
         if "<==" in s:
             if not toks[0] in self.check_primitive.keys():
                 self.check_primitive[toks[0]]= set([int(toks[1])])
             else:
                 self.check_primitive[toks[0]].add(int(toks[1]))
-        return self.found_rec[toks[0]](int(toks[1]))
-    def basic(self,t):
-        if type(t) is App:
-            for x in t.args:
-                if not self.basic(x): return False 
-            return True
-        elif type(t) is Var:
-            return True
-        elif type(t) is Rec:
-            if t.func in self.found_rec.values() and t.idx.number != 0: return False
-            else: return True
+        return self.found_rec[toks[0]][toks[1]]
 
     def parse_input(self,input):
         for l in input:

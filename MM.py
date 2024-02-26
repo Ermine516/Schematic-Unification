@@ -73,7 +73,7 @@ class MM(Solver):
     def mmeq(self,mm,term):
         vars,terms,matches,syms = mm
         #print("here",term,isinstance(term,Rec))
-        if type(term) is Var:
+        if issubclass(type(term), VarObjects):
             asVar = self.getrep(term)
 # remove occurances of variables found during decomposition
             asVar.setocc(-1)
@@ -188,11 +188,12 @@ class MM(Solver):
 # s=?=t where s is a variable  
         self.clear() 
         for x,y in problem:
-            if type(y) is Var: 
+            if issubclass(type(y),VarObjects): 
                 self.insert(x,0).union(self.insert(y,0))
             else:
                 self.insert(x,0).ts().append(y) 
                 for w in y.varsOcc(): self.insert(w,1)
+                for w in y.recsOcc(): self.insert(w,1)
         for x in self.probVarsSet:
             if x.find().occ == 0: self.var_reps.add(x.find())
             self.tosolve.add(x.find())
@@ -216,19 +217,23 @@ class MM(Solver):
         fvar = Namer("MM").current_name()
         for i,ue in enumerate(problem):
             pVar = self.insert(Var(fvar,i),0)
-            if ue[0] is Var: 
+            if issubclass(type(ue[0]), VarObjects): 
                 pVar = pVar.union(self.insert(ue[0],0))
             else: 
                 pVar.ts().append(ue[0])
                 for w in ue[0].varsOcc(): self.insert(w,1)
-            if ue[1] is Var: 
+                for w in ue[0].recsOcc(): self.insert(w,1)
+
+            if issubclass(type(ue[1]), VarObjects): 
                 pVar = pVar.union(self.insert(ue[1],0))
             else: 
                 pVar.ts().append(ue[1])
                 for w in ue[1].varsOcc(): self.insert(w,1)
+                for w in ue[1].recsOcc(): self.insert(w,1)
         for x in self.probVarsSet:
             if x.find().occ == 0: self.var_reps.add(x.find())
             self.tosolve.add(x.find())
+
     def insert(self,t,count):
             if t.vc in self.probVarsDict.keys() and not t.idx in self.probVarsDict[t.vc].keys(): 
                 uft=UnionFindNode(t) 

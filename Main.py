@@ -76,9 +76,6 @@ def unify():
     su.unif(time.time())
 
 def unfold():
-    def updateRec2(b):
-            RecReplace = lambda x: Var(x.func.name,x.idx) if isinstance(x,Rec) else x
-            return (b[0].applyFunc(RecReplace),b[1].applyFunc(RecReplace))
     unifProb = readUnifFile()
     ufUnifProb = unifProb.instance()
     try:
@@ -91,7 +88,7 @@ def unfold():
     foSolver = MM(unifProb.schSubs,args.debug)
    
     try:
-        results , _, _ = foSolver.unify(set(map(updateRec2,ufUnifProb.prob)),True)
+        results , _ = foSolver.unify(ufUnifProb.prob,True)
     except Solver.CycleException as e:
         return e.handle(args.debug)
     except Solver.ClashExeption as e:  
@@ -104,8 +101,6 @@ def unfold():
         results.removebinding(x)
     print(ufUnifProb)
     print(results)
-
-#    start_time = time.time()
 
 if __name__ == "__main__":
     args= parsing_CMD()

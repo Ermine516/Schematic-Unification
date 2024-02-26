@@ -78,8 +78,8 @@ class ThetaUnification(Solver):
     def unify(self,problem:UProb)-> Tuple[UProb,UProb,set[Rec]]:
         config = Configuration(problem,self.SchematicSubstitution)  
 #Checks useful for the unification procedure
-        isTerm = lambda a: not type(a) is Var and not type(a) is Rec
-        isVarRec =lambda a:  type(a) is Var or  type(a) is Rec
+        isTerm = lambda a: not  issubclass(type(a),VarObjects) 
+        isVarRec =lambda a:   issubclass(type(a),VarObjects) 
         isRec = lambda a: type(a) is Rec
         isVar = lambda a: type(a) is Var
         unseen = lambda a: not a in config.seen
