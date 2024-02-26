@@ -46,7 +46,7 @@ class SubProblem:
                 elif type(t) is Var and not t in s.keys():
                     return Var(t.vc,t.idx)
                 else:
-                    return Rec(t.func,t.idx)
+                    return Rec(t.vc,t.idx)
             def checkfur(y):
                 for r in self.recs:
                     if dom.isFutureRelevant(r,y): return True

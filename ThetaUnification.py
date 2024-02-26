@@ -31,6 +31,7 @@ class Configuration:
             return ret
         
         def addSeen(self, *args:Tuple[UEq])-> None:
+
             if len(args)==1:
                 self.seen.add((args[0][0],args[0][0],args[0][1]))
             elif len(args)==2:
@@ -55,7 +56,9 @@ class Configuration:
             for r in self.recursions:
                  if self.store.schSubs.isFutureRelevant(r,x): return True
             return False
-        
+        def isFutureRelevantto(self,x:Term,r:Term) -> bool:
+            if self.store.schSubs.isFutureRelevant(r,x): return True
+            return False
         def existsseen(self,uEq:UEq) -> bool:
             for p1,p2,p3 in self.seen:
                 if  p1==uEq[0] and p2==uEq[0] and p3==uEq[1]: return True
@@ -75,8 +78,8 @@ class ThetaUnification(Solver):
     def unify(self,problem:UProb)-> Tuple[UProb,UProb,set[Rec]]:
         config = Configuration(problem,self.SchematicSubstitution)  
 #Checks useful for the unification procedure
-        isTerm = lambda a: not type(a) is Var and not type(a) is Rec
-        isVarRec =lambda a:  type(a) is Var or  type(a) is Rec
+        isTerm = lambda a: not  issubclass(type(a),VarObjects) 
+        isVarRec =lambda a:   issubclass(type(a),VarObjects) 
         isRec = lambda a: type(a) is Rec
         isVar = lambda a: type(a) is Var
         unseen = lambda a: not a in config.seen
@@ -92,7 +95,7 @@ class ThetaUnification(Solver):
         store_T_D= lambda uEq: isRec(uEq[0]) and  not  isVar(uEq[1]) and not uEq.reflexive() and not stored(uEq)
         store_T_F= lambda uEq: not uEq.reflexive() and isVar(uEq[0]) and  not stored(uEq) and config.isFutureRelevant(uEq[0])
         transitivity = lambda uEq: lambda a: isVar(uEq[0]) and isVar(a[0]) and uEq[0]!= a[1] and not uEq.reflexive() and a[0]==uEq[0] and uEq[1]!=a[1] and unseen((uEq[0],a[1],uEq[1])) and unseen((uEq[0],uEq[1],a[1])) 
-
+        cycle_F =  lambda uEq: isRec(uEq[1]) and isVar(uEq[0]) and (config.isFutureRelevantto(uEq[0],uEq[1]))
 # Checks whether the given binding 'a' is relevent to the binding stored in the configuration
         while config.final():
             for uEq in config.active:
@@ -121,19 +124,24 @@ class ThetaUnification(Solver):
                     config.toRemove.add(uEq)
                 elif clash(uEq):
                     raise Solver.ClashExeption(uEq[0].func.name,uEq,self.start_time)
+                elif cycle_F(uEq):
+                    raise Solver.CycleException(uEq,f"{str(uEq[0])} is future relevant to {str(uEq[1])}",self.start_time)
                 elif store_T_R(uEq):
                     if self.debug>4: print(f"\t Store-Θ-R: {str(uEq)}")
                     config.updateStore(uEq)
+                    config.addSeen(uEq)
                 elif store_T_D(uEq):
                     if self.debug>4: print(f"\t Store-Θ-D: {str(uEq)}")
                     config.updateStore(uEq)
+                    config.addSeen(uEq)
                 elif  store_T_F(uEq):
                     if self.debug>4: print(f"\t Store-Θ-F: {str(uEq)}")
                     config.updateStore(uEq)
+                    config.addSeen(uEq)
                 else:
                         for uEq2 in list(filter(transitivity(uEq),config.active)):   
                             if self.debug>4: print(f"\t Transitivity: {str(uEq)} and {str(uEq2)}")
                             config.addSeen(uEq,uEq2)
                             config.updates.add(UEq(uEq[1],uEq2[1]))
         if self.debug>4: print()
-        return config.store, config.active, config.recursions
+        return config.store, config.active

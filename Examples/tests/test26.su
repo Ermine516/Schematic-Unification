@@ -1,4 +1,4 @@
-## A Non-linear Primitive example that unifies
+## A Non-linear Primitive, does not unify
 
 f(X[4],L_0) =?= f(f(f(W[0],f(W[1],W[0])),R_0),f(S_0,f(W[1],W[2])))
 R <== f(f(W[0],W[0]),R_1)

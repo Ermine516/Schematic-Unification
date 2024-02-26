@@ -52,7 +52,7 @@ class SchematicSubstitution(Substitution):
     def ground(self,i=0,localRecs=None):
         R =  localRecs  if localRecs else self.incrementors.keys()
         for x in R: 
-            self.addBinding(*self.incrementors[x.func if localRecs else x](x.idx if localRecs else i))
+            self.addBinding(*self.incrementors[x.vc if localRecs else x](x.idx if localRecs else i))
         for x,y in self.mapping.items():
             if type(y) is App: y.anchor=x
     def clear(self):
@@ -65,8 +65,6 @@ class SchematicSubstitution(Substitution):
             self.uniform= False
             self.simple = False
             self.nesting = True
-            for x in self.mutual.keys():
-                 raise InvalidRecursionException(x,self.mutual[x])
         for s in self.recursions.values():
             if len(s) > 1:
                 self.primitive= False
@@ -78,8 +76,8 @@ class SchematicSubstitution(Substitution):
         return self.associated_classes_max[name].keys()
 
     def isFutureRelevant(self,r,x):
-        if x.vc in self.associated_classes_min[r.func.name].keys():
-            minval = self.associated_classes_min[r.func.name][x.vc]
+        if x.vc in self.associated_classes_min[r.vc].keys():
+            minval = self.associated_classes_min[r.vc][x.vc]
             if r.idx +minval <= x.idx: return True
         return False
     def add_relevent_vars(self,uEq,clean=False):
@@ -101,21 +99,19 @@ class SchematicSubstitution(Substitution):
             elif type(term) is Var:
                 return Var(term.vc,i+term.idx)
             elif type(term) is Rec:
-                return Rec(term.func,i+term.idx)
-        if sym.arity != 1: 
-            raise InvalidFunctionException(sym)
-        self.associated_classes_min[sym.name] = {}
-        self.associated_classes_max[sym.name] = {}
+                return Rec(term.vc,i+term.idx)
+        self.associated_classes_min[sym] = {}
+        self.associated_classes_max[sym] = {}
 
-        self.extractclasses(sym.name,term)
+        self.extractclasses(sym,term)
         self.symbols.append(sym)
         class_groups = list(map(lambda a: (a,set(self.associated_classes_min[a].keys())),self.associated_classes_min.keys()))
         while len(class_groups)!= 0:
             vclass,cur = class_groups.pop()
 
-        self.varsenum[sym.name] = {x:{} for x in self.associated_classes_min[sym.name] }
-        self.revvarsenum[sym.name] ={x:{} for x in self.associated_classes_min[sym.name]}
-        self.initialize(term,sym.name,clean)
+        self.varsenum[sym] = {x:{} for x in self.associated_classes_min[sym] }
+        self.revvarsenum[sym] ={x:{} for x in self.associated_classes_min[sym]}
+        self.initialize(term,sym,clean)
         self.updateType()
         self.occuringVariables.update(term.vars())
         self.incrementors[sym]=lambda i: (Rec(sym,i),insert(i,term))
@@ -147,7 +143,7 @@ class SchematicSubstitution(Substitution):
         elif type(term) is App:
             term.applyFunc(lambda a:self.extractclasses(sym,a))
         elif type(term) is Rec:
-            if term.func.name != sym: self.mutual[sym].add(term)
+            if term.vc != sym: self.mutual[sym].add(term)
             self.recursions[sym].add(term.idx)
                 
     def makePrimitive(self):
@@ -167,22 +163,22 @@ class SchematicSubstitution(Substitution):
                 nVar = Var(nName,idxMod)
                 return nVar, mu+(t,Var(nName,idxMod))
             elif type(t) is Rec:
-                return Rec(t.func,1), mu
+                return Rec(t.vc,1), mu
         if not self.uniform: return None, None
         if self.primitive: return self, Substitution()
 
         prim = SchematicSubstitution()
-        sigma = Substitution()
         symIdxPairs = [(x,list(y)[0])for x,y in self.recursions.items() if list(y)[0]> 1]
         symIdxPairs.sort(key=lambda x: x[1],reverse=True)
+        nonPrimSyms,_ = zip(*symIdxPairs)
         nu = Substitution()
         self.clear()
         self.ground(0)
-        pairs = {x.name:self.mapping[Rec(x,0)].instance() for x in self.symbols if not x in self.recursions.keys()}
+        pairs = {x:self.mapping[Rec(x,0)].instance() for x in self.symbols if not x in nonPrimSyms}
         for i in range(0,len(symIdxPairs)):
             sym,idx = symIdxPairs[i]
             assLCls = self.associated_classes_min[sym].keys()
-            symTerm = nu(self.mapping[Rec(Func(sym,1),0)])
+            symTerm = nu(self.mapping[Rec(sym,0)])
             assLClsNames = {}
             for x in assLCls:
                 mNames=Namer(x+sym)
@@ -196,6 +192,5 @@ class SchematicSubstitution(Substitution):
             pairs[sym] = nt
         pairs = [(x,nu(y)) for x,y in pairs.items()]
         for x,y in pairs:
-            prim.add_interpreted(Func(x,1),y)
-        curVars = [x for x in nu.domain()]
+            prim.add_interpreted(x,y)
         return prim, nu
