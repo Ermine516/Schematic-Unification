@@ -11,7 +11,7 @@ class Test:
         isunif = {1:True,2:True,3:True,4:False,5:False,6:False, \
         7:True,8:True,9:False,10:False,11:True,12:True,\
         13:False,14:True,15:True,16:True,17:True,18:False, \
-        19:True,20:True,21:False,22:False,23:True,24:True, \
+        19:True,20:False,21:False,22:False,23:True,24:True, \
         25:True,26:True,27:False,28:False,29:True,30:True, \
         31:True,32:True,33:True,34:False}
         for i in range(1,len(onlyfiles)+1):

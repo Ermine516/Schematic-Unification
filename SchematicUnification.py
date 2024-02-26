@@ -24,14 +24,12 @@ class SchematicUnification:
         if self.debug >0: self.print_initial_problem()
         try:
             while self.subproblems.Open(start_time):
-                try:
-                    subp, recs= self.unify_current()
-                except Solver.CycleException as e:
-                    return e.handle(self.debug)
-                except Solver.ClashExeption as e:  
-                    return e.handle(self.debug)
-                self.update_subproblems(subp,recs)
+                self.update_subproblems(self.unify_current())
                 self.update()
+        except Solver.CycleException as e:
+            return e.handle(self.debug)
+        except Solver.ClashExeption as e:  
+            return e.handle(self.debug) 
         except StabilityViolationFinalException as e:
             return e.handle(self.debug,start_time)
 
@@ -110,7 +108,7 @@ class SchematicUnification:
             self.print_current_problem(self.current())
             print()
         if self.debug>4: print("Theta Unification:\n")
-        store, context,recs = self.SchSolver.unify(current)
+        store, context = self.SchSolver.unify(current)
         if self.debug>3: print("First-order Syntactic Unification:\n")
         self.foSolver.count = self.count
         checkCycles = set(map(updateRec2,context))
@@ -121,7 +119,7 @@ class SchematicUnification:
 ## Transform Rec into Var
         cleaned_context= set(map(updateRec2,cleaned_context))
 ## Run MM again to get a unifier
-        results , _, _ =self.foSolver.unify(cleaned_context)
+        results , _=self.foSolver.unify(cleaned_context)
 ## Build substitution without mappings to Rec
 ## Note, a bit of randomness below. May output different equivalent results
         cleanresults = results.restriction(lambda a:not Func(a.vc,1) in self.SchematicSubstitution.symbols )
@@ -132,7 +130,7 @@ class SchematicUnification:
 ## We may have derived Store bindings in the process.
         finRes = results.restriction(lambda a: a in contextVars)
         self.current().IrrSub = finRes
-        return  store,recs
+        return  store
 
     def current(self):
         return self.subproblems.Top()
@@ -141,7 +139,7 @@ class SchematicUnification:
         self.foSolver.clear()
         self.count+=1
 
-    def update_subproblems(self,sub,recs):
+    def update_subproblems(self,sub):
         if self.debug>3: self.print_sub_results(sub)
         self.subproblems += SubProblem(sub)
     
