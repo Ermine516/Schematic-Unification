@@ -9,13 +9,13 @@ import time
 
 class SchematicUnification:
 
-    def __init__(self,UnifProb,debug=0):
+    def __init__(self,UnifProb,schSubs,debug=0):
         self.debug = debug
-        self.foSolver = MM(UnifProb.schSubs,debug)
-        self.SchSolver = ThetaUnification(UnifProb.schSubs,debug)
+        self.foSolver = MM(schSubs,debug)
+        self.SchSolver = ThetaUnification(schSubs,debug)
         self.count = 0
-        self.SchematicSubstitution = UnifProb.schSubs
-        self.subproblems = SubProblemStack(UnifProb,debug)
+        self.SchematicSubstitution = schSubs
+        self.subproblems = SubProblemStack(UnifProb,schSubs,debug)
         self.irrelevant = UnificationProblem()
 
     def unif(self,start_time=-1):
@@ -36,7 +36,73 @@ class SchematicUnification:
         if self.debug >1: self.print_final_results()  
         if self.debug in [0,1]: print(f"\t unifiable --- {round(time.time() - start_time,3)} seconds ---")
 
-#This is the code for building the first part of a unifier 
+        #self.unifier()
+        return True , (time.time() - start_time)
+
+    def unify_current(self):
+
+## incrementing the current subproblem for the computation of the next subproblem
+        current = self.current().subproblem.increment(self.SchematicSubstitution)
+        if self.debug>2: self.print_current_problem(self.current())
+        if self.debug>4: print("Theta Unification:\n")
+        store, context = self.SchSolver.unify(current)
+        if self.debug>3: print("First-order Syntactic Unification:\n")
+## Checking for cycles in the new subproblem
+        self.foSolver.count = self.count
+        self.foSolver.unify(context)
+## Dropped everything which has to do with Store from the context
+        cleaned_context= set(filter(lambda a:  not a in store and not type(a[0]) is Rec , context)) 
+        contextVars = [x[0] for x in cleaned_context]
+## Checking for cycles in the Irrelevant set
+        results = self.cycle(contextVars,cleaned_context)
+## Build substitution without mappings to Rec
+## Note, a bit of randomness below. May output different equivalent results
+        cleanresults = results.restriction(lambda a:not a.vc in self.SchematicSubstitution.symbols )
+## Build substitution with only mappings to Rec
+        FromDom = results.restriction(lambda a: a.vc in self.SchematicSubstitution.symbols )
+## Build substitution by composing the previous two and removing mappings to Rec
+        results = FromDom(cleanresults).restriction(lambda a:not a.vc in self.SchematicSubstitution.symbols )
+## We may have derived Store bindings in the process.
+        finRes = results.restriction(lambda a: a in contextVars)
+        self.current().IrrSub = finRes
+        return  store
+
+    def current(self):
+        return self.subproblems.Top()
+
+    def update(self):
+        self.foSolver.clear()
+        self.count+=1
+
+    def update_subproblems(self,sub):
+        if self.debug>3: self.print_sub_results(sub)
+        self.subproblems += SubProblem(sub)
+    
+    def cycle(self,contextVars,cleaned_context):
+        contextIdxs = [x.idx for x in contextVars]
+        maxContextVar =  max(contextIdxs) if contextIdxs != [] else 0
+        ## Turning off debugging for checks
+        self.foSolver.debug = -1
+        ## Add the cleaned context to the irrelevant set
+        ## Check if the irrelevant set contains a cycle 
+        for uEq in cleaned_context: self.irrelevant +=uEq
+        contextRecs = set()
+        for x in self.irrelevant: contextRecs.update(x[1].vos(Rec))
+        contextRecsIdxs = [x.idx for x in contextRecs]
+        minContextRex = min(contextRecsIdxs) if contextRecsIdxs!= [] else 0
+        shifts = max(maxContextVar-minContextRex+1,0)
+        ## incrementing the irrelevant set for the computation of its extension
+        for i in range(0,shifts):
+            self.irrelevant = self.irrelevant.increment(self.SchematicSubstitution)
+        ## Run MM again to get a unifier
+        self.foSolver.unify(self.irrelevant)
+        ## We be used to build the irrelevant unifier
+        results , _=self.foSolver.unify(cleaned_context)
+        ## Turning debugging back on 
+        self.foSolver.debug = self.debug
+        return results
+    #def unifier(self):
+        #This is the code for building the first part of a unifier 
                
 #         sigma=Substitution()
 #         tau = Substitution()
@@ -97,59 +163,7 @@ class SchematicUnification:
 #                 t = temp(t)
 #             newRecsterms[x]=t
 #         print(newRecsterms[x])
-        return True , (time.time() - start_time)
 
-    def unify_current(self):
-## incrementing the irrelevant set for the computation of its extension
-        self.irrelevant = self.irrelevant.increment(self.SchematicSubstitution)
-## incrementing the current subproblem for the computation of the next subproblem
-        current = self.current().subproblem.increment(self.SchematicSubstitution)
-        if self.debug>2: self.print_current_problem(self.current())
-        if self.debug>4: print("Theta Unification:\n")
-        store, context = self.SchSolver.unify(current)
-        if self.debug>3: print("First-order Syntactic Unification:\n")
-## Checking for cycles in the new subproblem
-        self.foSolver.count = self.count
-        self.foSolver.unify(context)
-## Dropped everything which has to do with Store from the context
-        cleaned_context= set(filter(lambda a:  not a in store and not type(a[0]) is Rec , context)) 
-        contextVars = [x[0] for x in cleaned_context]
-## Turning off debugging for checks
-        self.foSolver.debug = -1
-## Add the cleaned context to the irrelevant set
-## Check if the irrelevant set contains a cycle 
-        for uEq in cleaned_context: self.irrelevant +=uEq
-## need to consider the unification equations of the store as well
-        test = self.irrelevant.instance()
-        for uEq in store: test +=uEq
-        self.foSolver.unify(test)
-## Run MM again to get a unifier
-        results , _=self.foSolver.unify(cleaned_context)
-## Turning debugging back on 
-        self.foSolver.debug = self.debug
-## Build substitution without mappings to Rec
-## Note, a bit of randomness below. May output different equivalent results
-        cleanresults = results.restriction(lambda a:not a.vc in self.SchematicSubstitution.symbols )
-## Build substitution with only mappings to Rec
-        FromDom = results.restriction(lambda a: a.vc in self.SchematicSubstitution.symbols )
-## Build substitution by composing the previous two and removing mappings to Rec
-        results = FromDom(cleanresults).restriction(lambda a:not a.vc in self.SchematicSubstitution.symbols )
-## We may have derived Store bindings in the process.
-        finRes = results.restriction(lambda a: a in contextVars)
-        self.current().IrrSub = finRes
-        return  store
-
-    def current(self):
-        return self.subproblems.Top()
-
-    def update(self):
-        self.foSolver.clear()
-        self.count+=1
-
-    def update_subproblems(self,sub):
-        if self.debug>3: self.print_sub_results(sub)
-        self.subproblems += SubProblem(sub)
-    
     def print_unif_results(self,unif):
         print("Unifier of "+str(self.count)+":\n"+ ''.join(["\t"+str(x)+" <= "+str(y)+"\n" for x,y in unif])+"\n")
 

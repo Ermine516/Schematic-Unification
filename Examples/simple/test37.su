@@ -1,4 +1,4 @@
-## A linear, non-uniform example that fails to terminate
-
+## A non-primitive example that fails to unify
+## but terminates
 L_0 =?=  h(Y[0],h(Y[1],Y[0]))
-L <== h(h(X[0],h(L_5,X[0])),L_1)
+L <== h(h(X[0],h(L_4,X[0])),L_1)

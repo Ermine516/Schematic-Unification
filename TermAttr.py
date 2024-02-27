@@ -2,18 +2,14 @@ from abc import ABC, abstractmethod
 
 
 class TermAttr(ABC):
+
     @abstractmethod
-    def recs(self):
+    def vos(self,sCls):
         pass
     @abstractmethod
-    def vars(self):
+    def vosOcc(self,sCls):
         pass
-    @abstractmethod
-    def varsOcc(self):
-        pass
-    @abstractmethod
-    def recsOcc(self):
-        pass
+        
     @abstractmethod
     def maxIdx(self):
         pass

@@ -1,11 +1,14 @@
 from __future__ import annotations
-from typing import Any, Tuple
+from typing import Any, Tuple,TypeVar
 from functools import reduce
-from Substitutable import *
+from Substitutable import Domainable, Substitutable
 from Substitution import Substitution
 from TermAttr import TermAttr
 from Normalizable import Normalizable
-from abc import ABC
+from abc import ABC,ABCMeta,abstractmethod
+
+# Used for typing the Variable Object functions
+VObj = TypeVar('VObj')
 
 class Func:
     name: str
@@ -71,28 +74,15 @@ class App(Term,TermAttr,Substitutable,Normalizable):
         else: return self.func(*map(lambda x: x.normalize(),self.args))
     
     # From TermAttr
-    def recs(self)-> set[Rec]:
+        
+    def vos(self,VObj:ABCMeta)->set[VObj]:
         ret=set()
-        for t in self.args:
-            ret.update(t.recs())
+        for t in self.args: ret.update(t.vos(VObj))
         return ret
-    
-    def vars(self) -> set[Var]:
-        ret = set()
-        for t in self.args:
-            ret.update(t.vars())
-        return ret
-
-    def varsOcc(self) -> set[Var]:
+   
+    def vosOcc(self,VObj:ABCMeta)->set[VObj]:
         ret = []
-        for t in self.args:
-            ret.extend(t.varsOcc())
-        return ret
-
-    def recsOcc(self) -> set[Var]:
-        ret = []
-        for t in self.args:
-            ret.extend(t.recsOcc())
+        for t in self.args: ret.extend(t.vosOcc(VObj))
         return ret
 
     def maxIdx(self) -> int:
@@ -156,6 +146,16 @@ class VarObjects(Term,Domainable,TermAttr,Substitutable,Normalizable,ABC):
 
     # From TermAttr 
 
+    def vos(self,VObj:ABCMeta)->set[VObj]:
+        if not issubclass(VObj,VarObjects): raise TypeError
+        if issubclass(type(self),VObj): return set([self])
+        else: return set([])
+    
+    def vosOcc(self,VObj:ABCMeta)->set[VObj]:
+        if not issubclass(VObj,VarObjects): raise TypeError
+        if issubclass(type(self),VObj): return [self]
+        else: return []
+        
     def maxIdx(self) -> int: return self.idx
  
     def minIdx(self) -> int: return self.idx
@@ -169,60 +169,31 @@ class VarObjects(Term,Domainable,TermAttr,Substitutable,Normalizable,ABC):
 
 class Var(VarObjects):
 
-    def __init__(self, vc: str, idx: int):
-        super().__init__(vc, idx)
+    def __init__(self, vc: str, idx: int): super().__init__(vc, idx)
 
-    def __str__(self) -> str:
-        return f"{self.vc}"+f"[{self.idx}]"
+    def __str__(self) -> str: return f"{self.vc}"+f"[{self.idx}]"
 
-    def __repr__(self) -> str:
-        return f"{self.vc.lower()}_{self.idx}"  
+    def __repr__(self) -> str: return f"{self.vc.lower()}_{self.idx}"  
 
 # Abstract Methods 
-
-    # From TermAttr
-    def recs(self) -> set[Var]: return set()
-    
-    def vars(self) -> set[Var]: return set([self])
-    
-    def varsOcc(self) -> list[Var]: return [self]
-    
-    def recsOcc(self) -> list[Rec]: return []
     
     def instance(self)-> Var: return Var(self.vc,self.idx)
 
 # Class Specific Methods 
 
-    def strAlt(self,tag:str)-> str:
-        return f"{self.vc}"+f"[{ tag if self.idx== 0 else tag+"+"+str(self.idx)}]"
+    def strAlt(self,tag:str)-> str: return f"{self.vc}"+f"[{ tag if self.idx== 0 else tag+"+"+str(self.idx)}]"
 
 class Rec(VarObjects):
 
+    def __init__(self, vc: str, idx: int): super().__init__(vc, idx)
 
-    def __init__(self, vc: str, idx: int):
-        super().__init__(vc, idx)
 #Magic Methods
+    def __str__(self) -> str: return self.vc+"_"+str(self.idx)
 
-    def __str__(self) -> str:
-        return self.vc+"_"+str(self.idx)
-
-
-    def __repr__(self)->str:
-        return self.vc.lower()+"_"+"r"+"_"+str(self.idx)
+    def __repr__(self)->str: return self.vc.lower()+"_"+"r"+"_"+str(self.idx)
 
 # Abstract Methods
-        
-    def recs(self) -> set[Rec]: return set([self])
-
-    def vars(self) -> set[Var]: return set()
-
-    def varsOcc(self) -> set[Var]: return []
-
-    def recsOcc(self) -> set[Rec]: return [self]
-
     def instance(self) -> Rec: return Rec(self.vc,self.idx)
     
 #Class Specific Methods
-
-    def strAlt(self,tag:str)->str:
-        return self.vc+"_"+("{"+tag+"+"+str(self.idx)+"}")
+    def strAlt(self,tag:str)->str: return self.vc+"_"+("{"+tag+"+"+str(self.idx)+"}")
