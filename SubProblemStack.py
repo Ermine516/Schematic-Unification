@@ -43,11 +43,11 @@ class SubProblemStack:
 
    
 
-    def __init__(self,unifProb,debug=0):
+    def __init__(self,unifProb,schSubs,debug=0):
         self.cycle = -1
         self.mapping =None
         self.debug = debug
-        self.dom = unifProb.schSubs
+        self.dom = schSubs
         stabProb = unifProb.increment(self.dom)
         self.stabBound = max(stabProb.depth(),stabProb.maxIdx())
         self.stabRatio = -1
@@ -91,7 +91,7 @@ class SubProblemStack:
     def close(self):
         left = self.Top()
         leftNorm = left.simplify(self.dom).normalization()
-        left.stab = len(leftNorm.subproblem.vars())
+        left.stab = len(leftNorm.subproblem.vos(Var))
         for x in reversed(range(0, len(self))):
             right = self.subproblems[x]
             if  x!=len(self) and not self.futureOverlap(left,right):
@@ -99,7 +99,7 @@ class SubProblemStack:
                 rightNorm = right.simplify(self.dom).normalization()
                 if len(self) >= self.stabBound and self.stabRatio==-1:
                     for p in self.subproblems: 
-                        if p.stab ==-1: p.stab = len(rightNorm.subproblem.vars())
+                        if p.stab ==-1: p.stab = len(rightNorm.subproblem.vos(Var))
                     self.stabRatio = max((p.stab for p in self.subproblems))
                 if left.stab > self.stabRatio and len(self) >= self.stabBound: 
                     raise StabilityViolationException(leftNorm,self,left.stab) 

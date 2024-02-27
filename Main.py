@@ -30,62 +30,68 @@ def parsing_CMD():
 def readUnifFile():
     tp =TermParser()
     unifProb = UnificationProblem(args.debug)
+    schsub = SchematicSubstitution()
+
     try: 
         with open(args.f) as f:
             try:
                 unif, mappings= tp.parse_input(f.readlines())
-                unifProb.addMappings(mappings.items())
+                for x,y in mappings.items(): schsub.add_interpreted(x,y)
                 unifProb.addEquations(unif)
-                unifProb.makePrimitive()
+                schsub= unifProb.makePrimitive(schsub)
             except UnusedVariableDefinitionWarning as e:
                 e.handle()
-                return None               
+                return None,None   
             except ArityMismatchException as e:
                 e.handle()
-                return None
+                return None,None   
             except SymbolTypeMisMatchException as e:
                 e.handle()
-                return None
+                return None,None   
             except UndefinedInterpretedException as e:
                 e.handle()
-                return None
+                return None,None   
             except unknownInputException as e:
                 e.handle()
-                return None
+                return None,None   
             except noUnificationProblemException as e:
                 e.handle()
-                return None
+                return None,None   
             except InvalidRecursionException as e:
                 e.handle()
-                return None
+                return None,None   
             except OutofOrderInputException as e:
-                return None    
+                return None,None   
             except nonUniforminputException as e:
-                if e.handle(): return None
+                if e.handle():  return None,None   
+
             except MappingReAssignmentException as e:
                 e.handle()
-                return None   
+                return None,None   
     except FileNotFoundError as e:
         print("A file must be provide (python main.py Unif -f file.su) or run test mode (python main.py Test) ")
-    return unifProb
+        return None,None   
+
+    return unifProb,schsub
 
 def unify():
-    unifProb = readUnifFile()
-    su = SchematicUnification(unifProb,args.debug)
-    start_time = time.time()
+    unifProb, schsub = readUnifFile()
+    if not (unifProb or schsub): return None
+    su = SchematicUnification(unifProb,schsub,args.debug)
     su.unif(time.time())
 
 def unfold():
-    unifProb = readUnifFile()
+    unifProb,schsub = readUnifFile()
+    if not (unifProb or schsub): return None
     ufUnifProb = unifProb.instance()
     try:
         unfoldings = int(args.uf)
         for i in range(unfoldings):
-            ufUnifProb = ufUnifProb.increment(unifProb.schSubs)
+            ufUnifProb = ufUnifProb.increment(schsub)
     except ArgumentNotFound as e:
         e.handle()
         return None
-    foSolver = MM(unifProb.schSubs,args.debug)
+    foSolver = MM(schsub,args.debug)
    
     try:
         results , _ = foSolver.unify(ufUnifProb.prob,True)

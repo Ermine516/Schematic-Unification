@@ -1,18 +1,22 @@
 from __future__ import annotations
-from typing import Set, Tuple, Dict
+from typing import Tuple 
 from collections import defaultdict
 from Namer import Namer
+from SchematicSubstitution import SchematicSubstitution
 from Solver import Solver
 from functools import reduce
 from Term import *
 from UnificationProblem import *
 from Substitution import Substitution
+
+# Implements Union-find algorithm 
 class UnionFindNode:
     val: Term
     rep: UnionFindNode    
     size: int
     terms: list[Term]
     occ: int
+
     def __init__(self,val:Term):
         self.val = val
         self.rep = self
@@ -20,59 +24,132 @@ class UnionFindNode:
         self.terms = []
         self.occ = 0
     
+#Magic Methods
+    
     def __eq__(self, other:UnionFindNode) -> bool:
         return isinstance(other, __class__) and self.val == other.val
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.val))
-    def __str__(self):
+    
+    def __str__(self) -> str:
         return str(self.find().val)
-    def union(self,y):
+
+# Class Specific Methods 
+    
+    def union(self:UnionFindNode,y:UnionFindNode) -> UnionFindNode:
         self,y=self.find(),y.find()
         if self==y: return self
         if self.size < y.size: self,y = y,self
-#Updates the size and number of occurances
+        # Updates the size and number of occurances
         self.size, self.occ = self.size+y.size,self.occ+y.occ
-#moves the right side of the multiequation to the representative
+        # moves the right side of the multiequation to the representative
         self.terms.extend(y.terms)
-#Resets the non-rep
+        # Resets the non-rep
         y.rep,y.terms, y.occ = self,[],0
         return self
-    def find(self):
+    
+    def find(self:UnionFindNode) -> UnionFindNode:
         while self.rep != self: self,self.rep = self.rep,self.rep.rep
         return self
-    def setocc(self,i):
+    
+    def setocc(self:UnionFindNode,i:int)-> None:
         self.find().occ = self.find().occ+i
-    def occs(self):
+    
+    def occs(self:UnionFindNode)-> int:
         return self.find().occ
-    def ts(self):
+    
+    def ts(self:UnionFindNode)-> list[Term]:
         return self.find().terms
-    def format(self):
+    
+    def format(self:UnionFindNode)-> str:
         return str(self.find().occ)+":{" +self.__str__()+"}"+" =?= "+"{{"+','.join([str(t) for t in self.ts()])+"}}"
 
+# Implements the  Martelli and Montanari unification algorithm
 class MM(Solver):
-    def __init__(self,SchematicSubstitution=None,debug=0,start_time=-1):
+    probVarsDict : dict[UnionFindNode] # Stores variables occuring in the problem as UnionFindNodes
+    probVarsSet  : set[UnionFindNode]  # Stores variables occuring in the problem as UnionFindNodes
+    var_reps     : set[UnionFindNode]  # Stores the representatives of each variable EQ class
+    tosolve      : set[UnionFindNode]  # Stores EQ classes with no occurances
+    count        : int                 # current problem being solved
+
+    def __init__(self:MM,SchematicSubstitution:SchematicSubstitution=None,debug:int=0,start_time:float=-1):
        self.probVarsDict={}
        self.probVarsSet=set()
        self.var_reps = set()
        self.tosolve = set()
        self.solved =set()
-       self.currentprob=0
        self.count = 0
        super().__init__(SchematicSubstitution,debug,start_time)
-    def getrep(self,t):
-        rep =self.probVarsDict[t.vc][t.idx] 
-        return rep.find()
-    def toUnifProb(self):
+    
+    def getrep(self:MM,t:VarObjects)-> UnionFindNode:
+        return self.probVarsDict[t.vc][t.idx].find()
+    
+    def toUnifProb(self:MM) -> UnificationProblem:
         ret = UnificationProblem()
         for x in self.tosolve:
-            for y in x.terms:
+            for y in x.terms: 
                 ret.addEquation(x,y,str(x.occ))
-        return ret            
+        return ret        
+    
+    def clear(self:MM)-> None:
+        self.probVarsDict = {}
+        self.probVarsSet = set()
+        self.var_reps = set()
+        self.tosolve = set()
+        self.solved =set()
+
+    def insert(self:MM,t:VarObjects,count:int)->UnionFindNode:
+            if t.vc in self.probVarsDict.keys() and not t.idx in self.probVarsDict[t.vc].keys(): 
+                uft=UnionFindNode(t) 
+                self.probVarsDict[t.vc][t.idx] = uft
+                self.probVarsSet.add(uft)
+            elif not t.vc in self.probVarsDict.keys(): 
+                uft=UnionFindNode(t) 
+                self.probVarsDict[t.vc] = {t.idx:uft} 
+                self.probVarsSet.add(uft)
+            uft=self.probVarsDict[t.vc][t.idx].find()
+            uft.setocc(count)
+            return uft
+    
+# We assume all problems in problem have the form
+# s=?=t where s is a variable. Otherwise use 
+# elaboratePreprocess
+    def preprocess(self:MM,problem:UnificationProblem)-> None:
+        self.clear() 
+        for x,y in problem:
+            if issubclass(type(y),VarObjects): 
+                self.insert(x,0).union(self.insert(y,0))
+            else:
+                self.insert(x,0).ts().append(y) 
+                for w in y.vosOcc(VarObjects): self.insert(w,1)
+        for x in self.probVarsSet:
+            if x.find().occ == 0: self.var_reps.add(x.find())
+            self.tosolve.add(x.find())
+
+    def elaboratePreprocess(self:MM,problem:UnificationProblem)-> None:
+        self.clear() 
+        fvar = Namer("MM").current_name()
+        for i,ue in enumerate(problem):
+            pVar = self.insert(Var(fvar,i),0)
+            if issubclass(type(ue[0]), VarObjects): 
+                pVar = pVar.union(self.insert(ue[0],0))
+            else: 
+                pVar.ts().append(ue[0])
+                for w in ue[0].vosOcc(VarObjects): self.insert(w,1)
+
+            if issubclass(type(ue[1]), VarObjects): 
+                pVar = pVar.union(self.insert(ue[1],0))
+            else: 
+                pVar.ts().append(ue[1])
+                for w in ue[1].vosOcc(VarObjects): self.insert(w,1)
+        for x in self.probVarsSet:
+            if x.find().occ == 0: self.var_reps.add(x.find())
+            self.tosolve.add(x.find())
+        
 # mm has the structure (variables,terms,subterm at position,Symbols found)
-    def mmeq(self,mm,term):
+    def mmeq(self:MM,mm:Tuple[list[VarObjects],list[Term],list[list[Term]],set[Func]],term:Term)->Tuple[list[VarObjects],list[Term],list[list[Term]],set[Func]]:
         vars,terms,matches,syms = mm
-        #print("here",term,isinstance(term,Rec))
         if issubclass(type(term), VarObjects):
             asVar = self.getrep(term)
 # remove occurances of variables found during decomposition
@@ -88,12 +165,11 @@ class MM(Solver):
 # M and M decomposition function
 # decomposes the terms and builds the common part
 # and frontier
-    def decompose(self,cur,ts):
+    def decompose(self:MM,cur:UnionFindNode,ts:list[Term])-> Term:
         vars,terms,matches,syms =reduce(lambda a,b: self.mmeq(a,b) ,ts,([],[],defaultdict(lambda :[]),set()))
         if len(syms)>1: raise Solver.ClashExeption(syms,ts,self.start_time)
         elif len(vars)>0: return (reduce(lambda a,b:  a.union(b),vars),[(set(vars),terms)])
         else:
-           # print(cur,ts,vars,terms,matches,syms)
             sym =syms.pop()
             args,front=[None]*sym.arity,[]
             for x,y,z in map(lambda a: (a[0],*self.decompose(cur,a[1])),matches.items()):
@@ -102,12 +178,9 @@ class MM(Solver):
             return (sym(*args),front)
 
 
-   #I am here trying to fix the issues with multiple occurances of variables
-    def unify(self,problem,stdMode=False):
-        if stdMode:
-           self.elaboratePreprocess(problem)
-        else:
-            self.preprocess(problem)
+    def unify(self:MM,problem:UnificationProblem,stdMode:bool=False)-> Substitution:
+        if stdMode: self.elaboratePreprocess(problem)
+        else: self.preprocess(problem)
         steps=0
         while len(self.var_reps)>0:
             if self.debug>3: self.print_current_step(steps,self.tosolve)
@@ -138,12 +211,9 @@ class MM(Solver):
                     self.tosolve.add(vrep)
                     self.solved.update([(v,vrep) for v in fvar if  v != vrep])
                 self.tosolve =set([x.find() for x in self.tosolve])
-                if self.debug>3:
-                    print()
-                    print("==========================================================")
+                if self.debug>3: print("\n==========================================================")
             else:
-                if self.debug>3:
-                    print("==========================================================")
+                if self.debug>3: print("==========================================================")
             steps+=1
 #If var_reps is empty and tosolve is not then we have a cycle
         if len(self.tosolve)!=0:
@@ -157,7 +227,8 @@ class MM(Solver):
         self.clear()
         return unifier, None
     
-    def buildUnifier(self):
+
+    def buildUnifier(self:MM)-> Substitution:
         def clean(t):
             if type(t) is UnionFindNode:
                 return t.find().val
@@ -183,66 +254,14 @@ class MM(Solver):
                 unifier += (b,maxIdx[v.find().val])
         
         return unifier
-    def preprocess(self,problem):
-# We assume all problems in problem have the form
-# s=?=t where s is a variable  
-        self.clear() 
-        for x,y in problem:
-            if issubclass(type(y),VarObjects): 
-                self.insert(x,0).union(self.insert(y,0))
-            else:
-                self.insert(x,0).ts().append(y) 
-                for w in y.varsOcc(): self.insert(w,1)
-                for w in y.recsOcc(): self.insert(w,1)
-        for x in self.probVarsSet:
-            if x.find().occ == 0: self.var_reps.add(x.find())
-            self.tosolve.add(x.find())
-    def clear(self):
-        self.probVarsDict = {}
-        self.probVarsSet = set()
-        self.var_reps = set()
-        self.tosolve = set()
-        self.solved =set()
+   
 
-    def print_current_step(self,steps,tosolve):
+
+
+    def print_current_step(self:MM,steps:int,tosolve:set[UnionFindNode])-> None:
         print("Step ",str(steps)," of ",str(self.count))
         for x in tosolve: print("\t"+x.format())
         print()
 
-    def elaboratePreprocess(self,problem):
-       
-# We assume all problems in problem have the form
-# s=?=t where s is a variable  
-        self.clear() 
-        fvar = Namer("MM").current_name()
-        for i,ue in enumerate(problem):
-            pVar = self.insert(Var(fvar,i),0)
-            if issubclass(type(ue[0]), VarObjects): 
-                pVar = pVar.union(self.insert(ue[0],0))
-            else: 
-                pVar.ts().append(ue[0])
-                for w in ue[0].varsOcc(): self.insert(w,1)
-                for w in ue[0].recsOcc(): self.insert(w,1)
+  
 
-            if issubclass(type(ue[1]), VarObjects): 
-                pVar = pVar.union(self.insert(ue[1],0))
-            else: 
-                pVar.ts().append(ue[1])
-                for w in ue[1].varsOcc(): self.insert(w,1)
-                for w in ue[1].recsOcc(): self.insert(w,1)
-        for x in self.probVarsSet:
-            if x.find().occ == 0: self.var_reps.add(x.find())
-            self.tosolve.add(x.find())
-
-    def insert(self,t,count):
-            if t.vc in self.probVarsDict.keys() and not t.idx in self.probVarsDict[t.vc].keys(): 
-                uft=UnionFindNode(t) 
-                self.probVarsDict[t.vc][t.idx] = uft
-                self.probVarsSet.add(uft)
-            elif not t.vc in self.probVarsDict.keys(): 
-                uft=UnionFindNode(t) 
-                self.probVarsDict[t.vc] = {t.idx:uft} 
-                self.probVarsSet.add(uft)
-            uft=self.probVarsDict[t.vc][t.idx].find()
-            uft.setocc(count)
-            return uft

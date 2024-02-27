@@ -49,15 +49,16 @@ class Configuration:
             return True
             
         def updateStore(self,binding:UEq) -> None:
-            self.recursions.update(binding.recs())
+            self.recursions.update(binding.vos(Rec))
             self.store+binding
 
         def isFutureRelevant(self,x:Term) -> bool:
             for r in self.recursions:
                  if self.store.schSubs.isFutureRelevant(r,x): return True
             return False
-        def isFutureRelevantto(self,x:Term,r:Term) -> bool:
-            if self.store.schSubs.isFutureRelevant(r,x): return True
+        def isFutureRelevantto(self,x:VarObjects,t:Term) -> bool:
+            for r in t.vos(Rec):
+                if self.store.schSubs.isFutureRelevant(r,x): return True
             return False
         def existsseen(self,uEq:UEq) -> bool:
             for p1,p2,p3 in self.seen:
@@ -95,7 +96,7 @@ class ThetaUnification(Solver):
         store_T_D= lambda uEq: isRec(uEq[0]) and  not  isVar(uEq[1]) and not uEq.reflexive() and not stored(uEq)
         store_T_F= lambda uEq: not uEq.reflexive() and isVar(uEq[0]) and  not stored(uEq) and config.isFutureRelevant(uEq[0])
         transitivity = lambda uEq: lambda a: isVar(uEq[0]) and isVar(a[0]) and uEq[0]!= a[1] and not uEq.reflexive() and a[0]==uEq[0] and uEq[1]!=a[1] and unseen((uEq[0],a[1],uEq[1])) and unseen((uEq[0],uEq[1],a[1])) 
-        cycle_F =  lambda uEq: isRec(uEq[1]) and isVar(uEq[0]) and (config.isFutureRelevantto(uEq[0],uEq[1]))
+        cycle_F =  lambda uEq: isVar(uEq[0]) and (config.isFutureRelevantto(uEq[0],uEq[1]))
 # Checks whether the given binding 'a' is relevent to the binding stored in the configuration
         while config.final():
             for uEq in config.active:

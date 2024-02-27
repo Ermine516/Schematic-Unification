@@ -27,8 +27,8 @@ class SubProblem:
 # Collects all variables and recursion occurring in the problem
         for uEq in subproblem:
             for t in uEq:
-                self.vars.update(t.vars())
-                self.recs.update(t.recs())
+                self.vars.update(t.vos(Var))
+                self.recs.update(t.vos(Rec))
 # Collects all variables that are future relevent 
         for x in self.vars:
             if not x.vc in self.futurevars.keys(): self.futurevars[x.vc] =  x 

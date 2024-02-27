@@ -17,13 +17,14 @@ class Test:
         for i in range(1,len(onlyfiles)+1):
             tp =TermParser()
             unifProb = UnificationProblem(-1)
+            schsub = SchematicSubstitution()
             with open("Examples/tests/"+onlyfiles[i-1]) as f:
                 unif, mappings= tp.parse_input(f.readlines())
-                unifProb.addMappings(mappings.items())
+                for x,y in mappings.items(): schsub.add_interpreted(x,y)
                 unifProb.addEquations(unif)
-                unifProb.makePrimitive()
-                if i==35: print("Following test takes over 300 seconds")
-                su = SchematicUnification(unifProb,-1)
+                schsub = unifProb.makePrimitive(schsub)
+            #    if i==35: print("Following test takes over 300 seconds")
+                su = SchematicUnification(unifProb,schsub,-1)
                 start_time = time.time()
                 worked, tottime = su.unif(time.time())
                 if i<10:

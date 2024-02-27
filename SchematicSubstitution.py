@@ -36,12 +36,12 @@ class SchematicSubstitution(Substitution):
 # the variable classes associated with that recursive variable indexed 
 # by number
 # {'L': {'X': {1: x_1, 0: x_0}, 'Z': {0: z_0, 1: z_1}}}
-        self.varsenum ={}
+        #self.varsenum ={}
 # for each interpreted variable we have a dictionary containing 
 # the variable classes associated with that recursive variable indexed 
 # by variable
 # {'L': {'X': {x_1: 1, x_0: 0}, 'Z': {z_0: 0, z_1: 1}}}
-        self.revvarsenum ={}
+        #self.revvarsenum ={}
         self.incrementors = {}   
         self.nesting = False
         self.primitive = True
@@ -80,18 +80,18 @@ class SchematicSubstitution(Substitution):
             minval = self.associated_classes_min[r.vc][x.vc]
             if r.idx +minval <= x.idx: return True
         return False
-    def add_relevent_vars(self,uEq,clean=False):
-        for x,y in self.varsenum.items():
-            for t in uEq:
-                self.add_relevent_vars_helper(x,t,clean)
-    def add_relevent_vars_helper(self,rec,term,clean=False):
-        if  type(term)  is Var:
-            if term.vc in self.varsenum[rec].keys():
-                if clean: term.reset()
-                self.varsenum[rec][term.vc][term.idx],self.revvarsenum[rec][term.vc][term] = term, term.idx
-        elif type(term) is App:
-            for t in term.args:
-                self.add_relevent_vars_helper(rec,t)
+    # def add_relevent_vars(self,uEq,clean=False):
+    #     for x,y in self.varsenum.items():
+    #         for t in uEq:
+    #             self.add_relevent_vars_helper(x,t,clean)
+    # def add_relevent_vars_helper(self,rec,term,clean=False):
+    #     if  type(term)  is Var:
+    #         if term.vc in self.varsenum[rec].keys():
+    #             if clean: term.reset()
+    #             self.varsenum[rec][term.vc][term.idx],self.revvarsenum[rec][term.vc][term] = term, term.idx
+    #     elif type(term) is App:
+    #         for t in term.args:
+    #             self.add_relevent_vars_helper(rec,t)
     def add_interpreted(self,sym,term,clean=False):
         def insert(i,term):
             if type(term) is App:
@@ -109,26 +109,26 @@ class SchematicSubstitution(Substitution):
         while len(class_groups)!= 0:
             vclass,cur = class_groups.pop()
 
-        self.varsenum[sym] = {x:{} for x in self.associated_classes_min[sym] }
-        self.revvarsenum[sym] ={x:{} for x in self.associated_classes_min[sym]}
-        self.initialize(term,sym,clean)
+        #self.varsenum[sym] = {x:{} for x in self.associated_classes_min[sym] }
+        #self.revvarsenum[sym] ={x:{} for x in self.associated_classes_min[sym]}
+       # self.initialize(term,sym,clean)
         self.updateType()
-        self.occuringVariables.update(term.vars())
+        self.occuringVariables.update(term.vos(Var))
         self.incrementors[sym]=lambda i: (Rec(sym,i),insert(i,term))
-    def initialize(self,t,sym,clean=False):
-        if type(t) is Var:
-            if clean: t.reset()
-            if not t in self.revvarsenum[sym][t.vc].keys():
-                self.varsenum[sym][t.vc][t.idx],self.revvarsenum[sym][t.vc][t] = t,t.idx
-                return t
-            elif  t in self.revvarsenum[sym][t.vc].keys():
-                return t
-        elif type(t) is App:
-                return t.func(*map(lambda a: self.initialize(a,sym),t.args))
-        elif type(t) is Rec:
-            return t
-        else:
-            raise Exception
+    # def initialize(self,t,sym,clean=False):
+    #     if type(t) is Var:
+    #         if clean: t.reset()
+    #         if not t in self.revvarsenum[sym][t.vc].keys():
+    #             self.varsenum[sym][t.vc][t.idx],self.revvarsenum[sym][t.vc][t] = t,t.idx
+    #             return t
+    #         elif  t in self.revvarsenum[sym][t.vc].keys():
+    #             return t
+    #     elif type(t) is App:
+    #             return t.func(*map(lambda a: self.initialize(a,sym),t.args))
+    #     elif type(t) is Rec:
+    #         return t
+    #     else:
+    #         raise Exception
 
 
 

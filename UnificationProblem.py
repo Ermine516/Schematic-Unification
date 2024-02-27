@@ -3,7 +3,7 @@ from Substitution import Substitution as sub
 from Substitutable import Substitutable
 from TermAttr import TermAttr
 from Normalizable import Normalizable
-from Term import Term
+from Term import Rec, Term
 class nonUniforminputException(Exception):
     def __init__(self):
         pass
@@ -65,19 +65,11 @@ class UnificationEquation(Substitutable,TermAttr,Normalizable):
     def handleSubstitution(self,sigma):
         return UnificationEquation(sigma(self.left),sigma(self.right))
 
-    def recs(self):
-        ret = set()
-        for t in self:
-            ret.update(t.recs())
-        return ret
-    def vars(self):
-        return self.left.vars().union(self.right.vars())
+    def vos(self,sCls):
+        return self.left.vos(sCls).union(self.right.vos(sCls))
     
-    def varsOcc(self):
-        return self.left.varsOcc() or self.right.varsOcc()
-    
-    def recsOcc(self):
-        return self.left.recsOcc() or self.right.recsOcc()
+    def vosOcc(self,sCls):
+        return self.left.vosOcc(sCls) or self.right.vosOcc(sCls)
     
     def maxIdx(self):
         return max(self.left.maxIdx(),self.right.maxIdx())
@@ -111,7 +103,6 @@ class UnificationEquation(Substitutable,TermAttr,Normalizable):
     
 class UnificationProblem(Substitutable,TermAttr,Normalizable):
     def __init__(self,debug=0):
-        self.schSubs = schsub.SchematicSubstitution()
         self.prob = set()
         self.PrimMap = sub()
         self.debug = debug
@@ -120,16 +111,18 @@ class UnificationProblem(Substitutable,TermAttr,Normalizable):
 
     def __len__(self):
         return len(self.prob)
+    
     def __iter__(self):
         return self.prob.__iter__()
     
     def __next__(self):
         return self.prob.__next__()
+    
     def __str__(self):
         return "{\n"+",\n".join([str(x) for x in self.prob])+"}"
+    
     def __add__(self,other):
         self.prob.add(other)
-        self.schSubs.add_relevent_vars(other)
         return self
     def __contains__(self,item):
         return item in self.prob
@@ -139,35 +132,23 @@ class UnificationProblem(Substitutable,TermAttr,Normalizable):
         ret = self.instance() 
         ret.prob = set([x.normalize() for x in ret])
         return ret
+    
     def handleSubstitution(self,sigma):
         ret = UnificationProblem()
-        for eq in self:
-            nEq = sigma(eq)
-            ret.addEquation(nEq.left,nEq.right)
+        for eq in self: 
+            ret+= sigma(eq)
         return ret
     
-    def recs(self):
+    def vos(self,sCls):
         ret = set()
         for x in self:
-            ret.update(x.recs())
+            ret.update(x.vos(sCls))
         return ret
 
-    def vars(self):
-        ret = set()
-        for x in self:
-            ret.update(x.vars())
-        return ret
-
-    def varsOcc(self):
+    def vosOcc(self,sCls):
         ret = []
         for x in self:
-            ret.append(x.varsOcc())
-        return ret
-
-    def recsOcc(self):
-        ret = []
-        for x in self:
-            ret.append(x.recsOcc())
+            ret.append(x.vosOcc(sCls))
         return ret
 
     def maxIdx(self):
@@ -186,7 +167,6 @@ class UnificationProblem(Substitutable,TermAttr,Normalizable):
     
     def instance(self):
         inst = UnificationProblem()
-        inst.schSubs = self.schSubs
         inst.PrimMap = self.PrimMap
         inst.debug = self.debug 
         inst.prob = set([uEq.instance() for uEq in self]) 
@@ -196,49 +176,33 @@ class UnificationProblem(Substitutable,TermAttr,Normalizable):
         newUP = self.instance()
         newUP.prob = set([uEq.applyFunc(f) for uEq in self]) 
         return newUP
+
 #Class Specific Methods
-
-
     def increment(self,ss):
         ss.clear()
-        ss.ground(localRecs=self.recs())
+        ss.ground(localRecs=self.vos(Rec))
         return ss(self.instance())
     
-
-
     def addEquation(self,s,t,anno=""):
         nEq = UnificationEquation(s,t,anno)
         self.prob.add(nEq)
-        self.schSubs.add_relevent_vars(nEq)
 
     def addEquations(self,pairs):
         for x,y in pairs:
             self.addEquation(x,y)
+   
     def clearReflex(self):
         removeSet =set()
         for x in self.prob:
-            if x[0] ==x[1]:
-                removeSet.add(x)
+            if x[0] ==x[1]: removeSet.add(x)
         for x in removeSet:
             self.prob.remove(x)
 
-    def addMapping(self,s,t):
-        self.schSubs.add_interpreted(s,t)
-    def addMappings(self,pairs):
-        for x,y in pairs:
-            self.schSubs.add_interpreted(x,y)
-    def makePrimitive(self):
-        if self.schSubs.uniform == False: raise nonUniforminputException()
-        if self.schSubs.primitive == False:
-            if(self.debug>0):
-                print("Schematic substitution is Uniform but Non-Primitive.")
-            self.schSubs,self.PrimMap = self.schSubs.makePrimitive()
-            if(self.debug>0):
-                print("Mapping used to transform Schematic substitution:")
-                print("\t",self.PrimMap)
+    def makePrimitive(self,schSubs):
+        if schSubs.uniform == False: raise nonUniforminputException()
+        if schSubs.primitive == False:
+            if(self.debug>0): print("Schematic substitution is Uniform but Non-Primitive.")
+            schSubs,self.PrimMap = schSubs.makePrimitive()
+            if(self.debug>0): print("Mapping used to transform Schematic substitution:\n","\t",self.PrimMap)
             self.prob = set([UnificationEquation(self.PrimMap(x),self.PrimMap(y)) for x,y in self])
-    def recs(self):
-        ret = set()
-        for uEq in self:
-            ret.update(uEq.recs())
-        return ret
+        return schSubs
