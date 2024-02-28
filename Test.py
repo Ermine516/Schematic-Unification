@@ -28,8 +28,6 @@ class Test:
                 worked, tottime = su.unif(time.time())
                 sp1 = " "*(9-len(str(round(tottime, 3))))
                 sp2 = " "*(4-len(str(i)))
-                if i<10:
-                    print(f"Test {str(i)}{sp2}{"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)}{sp1}Seconds")
-                else:
-                    print(f"Test {str(i)}{sp2}{"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)}{sp1}Seconds")
+                print(f"Test {str(i)}{sp2}{"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)}{sp1}Seconds")
+                
 
