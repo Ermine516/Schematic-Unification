@@ -8,8 +8,7 @@ class TermAttr(ABC):
         pass
     @abstractmethod
     def vosOcc(self,sCls):
-        pass
-        
+        pass    
     @abstractmethod
     def maxIdx(self):
         pass
