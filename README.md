@@ -51,6 +51,7 @@ The output should be roughly as follows:
  	Test 35  Passed -- 0.44     Seconds
 
 
+
 Below is an example of how to run the code on one of the example files: 
 
 	python Main.py Unif -f Examples/tests/test7.su --debug=2
@@ -182,7 +183,6 @@ If one types OK the unification process continues and resulting in the following
 
 		L_0 =?= h(Y[0],h(Y[1],Y[0]))
 
-
 	Schematic Substitution:
 
 		L_i <== h(h(L_{i+4},h(X[i+1],X[i])),L_{i+1})
@@ -257,6 +257,22 @@ results in the following output
 
 		L_0 =?= h(Y[0],h(Y[1],Y[0]))
 
+	Subproblem 3:
+		L_3 =?= h(X[1],X[0])
+		L_6 =?= h(h(h(L_12,h(X[9],X[8])),L_9),h(X[5],X[4]))
+		X[3] =?= h(L_9,h(X[6],X[5]))
+		X[2] =?= L_6
+
+
+	Computed Bindings for subproblem 0:
+
+
+	Computed Bindings for subproblem 1:
+		Y[1] <= h(L_5,h(X[2],X[1]))
+
+
+	Computed Bindings for subproblem 2:
+		Y[0] <= h(h(L_6,h(X[3],X[2])),L_3)
 
 	Schematic Substitution:
 
