@@ -1,3 +1,4 @@
+from SchematicSubstitution import SchematicSubstitution
 from Term import *
 from Solver import Solver
 from UnificationProblem import UnificationEquation as UEq
@@ -12,16 +13,17 @@ class Configuration:
         updates     : set[UEq]
         toRemove    : set[UEq]
         
-        def __init__(self,active,schSubs):
+        def __init__(self,active:UProb,schSubs:SchematicSubstitution):
             self.active = active # Set of unification problems
             self.store = UProb() # Set of variable on left unification problems
-            self.storeLen = len(self.store)
-            self.store.schSubs = schSubs
-            self.recursions = set()
-            self.seen = set()
-            self.updates=set()
-            self.toRemove=set()
+            self.storeLen = len(self.store) # using as part of the termination condition
+            self.store.schSubs = schSubs # The schematic substitution associated with the unfication problem
+            self.recursions = set() # used for checking if a variable is future relevant
+            self.seen = set() # holds seen unification equations
+            self.updates=set() # used to update the store and active set after a pass through the loop
+            self.toRemove=set() # used to update the store and active set after a pass through the loop
 
+# magic methods
         def __str__(self) -> str:
             exset = str([x.name for x in  self.store.schSubs.symbols])
             ret=f"Active({exset}):\n"
@@ -29,15 +31,14 @@ class Configuration:
             ret+=f"Store({exset}):\n"
             for x,y in self.store: ret+=f"\t {x} =?= {y}\n"
             return ret
-        
-        def addSeen(self, *args:Tuple[UEq])-> None:
 
+ # Class Specific Methods        
+        def addSeen(self, *args:Tuple[UEq])-> None:
             if len(args)==1:
                 self.seen.add((args[0][0],args[0][0],args[0][1]))
             elif len(args)==2:
                 self.seen.add((args[0][0],args[0][1],args[1][1]))
                 self.seen.add((args[0][0],args[1][1],args[0][1]))
-            
 
         def final(self)-> bool:
             if len(self.seen)!=0 and len(self.updates)+len(self.toRemove)== 0 and self.storeLen==len(self.store): return False
@@ -56,10 +57,12 @@ class Configuration:
             for r in self.recursions:
                  if self.store.schSubs.isFutureRelevant(r,x): return True
             return False
+        
         def isFutureRelevantto(self,x:VarObjects,t:Term) -> bool:
             for r in t.vos(Rec):
                 if self.store.schSubs.isFutureRelevant(r,x): return True
             return False
+        
         def existsseen(self,uEq:UEq) -> bool:
             for p1,p2,p3 in self.seen:
                 if  p1==uEq[0] and p2==uEq[0] and p3==uEq[1]: return True
@@ -73,10 +76,11 @@ class Configuration:
         
 class ThetaUnification(Solver):
 
-    def __init__(self,SchematicSubstitution=None,debug=0,start_time=-1):
+    def __init__(self,SchematicSubstitution:SchematicSubstitution=None,debug:int=0,start_time:float=-1):
         super().__init__(SchematicSubstitution,debug,start_time)
         
     def unify(self,problem:UProb)-> Tuple[UProb,UProb,set[Rec]]:
+        
         config = Configuration(problem,self.SchematicSubstitution)  
 #Checks useful for the unification procedure
         isTerm = lambda a: not  issubclass(type(a),VarObjects) 

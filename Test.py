@@ -23,12 +23,11 @@ class Test:
                 for x,y in mappings.items(): schsub.add_interpreted(x,y)
                 unifProb.addEquations(unif)
                 schsub = unifProb.makePrimitive(schsub)
-            #    if i==35: print("Following test takes over 300 seconds")
                 su = SchematicUnification(unifProb,schsub,-1)
                 start_time = time.time()
                 worked, tottime = su.unif(time.time())
-                if i<10:
-                    print(f"Test {str(i)}  {"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)} Seconds")
-                else:
-                    print(f"Test {str(i)} {"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)}  Seconds")
+                sp1 = " "*(9-len(str(round(tottime, 3))))
+                sp2 = " "*(4-len(str(i)))
+                print(f"Test {str(i)}{sp2}{"Passed" if worked == isunif[i]  else "Failed" } -- {round(tottime, 3)}{sp1}Seconds")
+                
 
