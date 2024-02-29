@@ -73,12 +73,12 @@ class SubProblem:
             orderedGroup = {}
             for x,y in grouping.items():    
                 maxV =x
+                maxbase=set()
                 for z in y:
-                    if z.idx > x.idx: maxV = z
-                if maxV != x:
-                    y.remove(maxV)
-                    y.add(x)
-                orderedGroup[maxV]=y
+                    if z.idx > maxV.idx: maxV = z
+                for z in y:
+                    if z != maxV: maxbase.add(z)
+                orderedGroup[maxV]=maxbase
             for x,y in orderedGroup.items():
                 fr = False
                 for z in y: 
