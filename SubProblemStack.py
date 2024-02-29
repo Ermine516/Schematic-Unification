@@ -33,12 +33,13 @@ class StabilityViolationException(Exception):
 class SubProblemStack:
 # Base ASP program
     
-    clingoBasic = ["#show e/2.","#defined futureRel/1.","#defined match/2.",\
-    ":- e(X,Y),futureRel(X),not futureRel(Y). " ,":- e(X,Y),not futureRel(X), futureRel(Y). ",\
+    clingoBasic = ["#show e/2.","#defined futureRel/2.","#defined match/2.",\
+    ":- e(X,Y),futureRel(l,X),not futureRel(r,Y). " ,":- e(X,Y),not futureRel(l,X), futureRel(r,Y). ",\
     ":- e(X,Y1), e(X,Y2), Y1!=Y2." ,":- other(X), not match(X,_)." ,\
      ":- tops(X), not match(_,X).",\
      "1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",\
-     ":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0."]
+     ":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0.",\
+     ":- e(X,Y),classmatch(Z1,X),classmatch(Z2,Y), Z1!=Z2.",":-futureRel(l,X),futureRel(r,X)."]
 
 
    
@@ -169,15 +170,16 @@ class SubProblemStack:
             else:
                 if self.debug >2: print("\t Subsumption failed on "+str(p1)+"\n")
                 return None
-        prog.append(''.join([f"varl({repr(y)})." for y in left.vars ])) 
-        prog.append(''.join([f"varl({repr(y)})." for y in left.recs ])) 
-        prog.append(''.join([f"varr({repr(y)})." for y in right.vars ]))
-        prog.append(''.join([f"varr({repr(y)})." for y in right.recs ]))
+        prog.append(''.join([f"varl({repr(y)}). classmatch({y.vc.lower()},{repr(y)})." for y in left.vars ])) 
+        prog.append(''.join([f"varl({repr(y)}). classmatch({y.vc.lower()},{repr(y)})." for y in left.recs ])) 
+        prog.append(''.join([f"varr({repr(y)}). classmatch({y.vc.lower()},{repr(y)})." for y in right.vars ]))
+        prog.append(''.join([f"varr({repr(y)}). classmatch({y.vc.lower()},{repr(y)})." for y in right.recs ]))
         prog.append(''.join([f"recs({repr(y)})." for y in recs ]))
         prog.append(''.join([f"tops({repr(y)})." for y in tops ]))
         prog.append(''.join([f"other({repr(y)})." for y in other ]))
-        prog.append(''.join([f"futureRel({repr(y)})." for y in left.futureRel ]))
-        prog.append(''.join([f"futureRel({repr(y)})." for y in right.futureRel ]))
+# This works but is not as written in the paper. I need to fix this code in the future
+        prog.append(''.join([f"futureRel(l,{repr(y)})." for y in left.futureRel if len(self)<= y.idx   ]))
+        prog.append(''.join([f"futureRel(r,{repr(y)})." for y in right.futureRel if len(self) <=  y.idx ]))
 
         return prog 
 
