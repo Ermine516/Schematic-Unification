@@ -10,8 +10,8 @@ class MappingReAssignmentException(Exception):
         pass
     def handle(self):
         print("Each Interpreted Variable should only have one mapping:")
-        print("\t",self.m1[0].name,self.m1[1])
-        print("\t",self.m2[0].name,self.m2[1])
+        print("\t",self.m1[0],self.m1[1])
+        print("\t",self.m2[0],self.m2[1])
         return None
 
 class noUnificationProblemException(Exception):

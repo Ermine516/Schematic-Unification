@@ -86,7 +86,7 @@ class SubProblem:
                         fr = True
                     simp.addBinding(z,x)
                 if fr:
-                    furtureRelevant.update(y)
+                    #furtureRelevant.update(y)
                     furtureRelevant.add(x)
             newsubp=simp(newsubp)
             newsubp.clearReflex()
