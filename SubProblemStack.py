@@ -39,7 +39,8 @@ class SubProblemStack:
      ":- tops(X), not match(_,X).",\
      "1{ e(X,Y): varr(Y)}1:- varl(X).",":-  varr(Y), not e(_,Y).",\
      ":- varl(X),recs(X),#count{Y: recs(Y),X!=Y,e(X,Y)}=0.",\
-     ":- e(X,Y),classmatch(Z1,X),classmatch(Z2,Y), Z1!=Z2.",":-futureRel(l,X),futureRel(r,X)."]
+     ":- e(X,Y),classmatch(Z1,X),classmatch(Z2,Y), Z1!=Z2.",":-futureRel(l,X),futureRel(r,X).",\
+     ":-  varl(X), varr(X), not e(X,X)." ]
 
 
    
@@ -130,7 +131,11 @@ class SubProblemStack:
         return False
         
     def computerEncoding(self,left,right):
-        if left.vars.intersection(right.vars)!=set([]): return None
+# Some variables may remain in all instances 
+# These "dead variables" are ok as eventually they will no longer 
+# be futureRel and thus are essentially constants
+        for x in left.vars.intersection(right.vars):
+            if x in left.futureRel or x in right.futureRel: return None
         def compatibleTerms(x,y):
             if type(x) is App and type(y) is App and x.func.name ==y.func.name:
                 ret = set()
@@ -177,10 +182,8 @@ class SubProblemStack:
         prog.append(''.join([f"recs({repr(y)})." for y in recs ]))
         prog.append(''.join([f"tops({repr(y)})." for y in tops ]))
         prog.append(''.join([f"other({repr(y)})." for y in other ]))
-# This works but is not as written in the paper. I need to fix this code in the future
-        prog.append(''.join([f"futureRel(l,{repr(y)})." for y in left.futureRel if len(self)<= y.idx   ]))
-        prog.append(''.join([f"futureRel(r,{repr(y)})." for y in right.futureRel if len(self) <=  y.idx ]))
-
+        prog.append(''.join([f"futureRel(l,{repr(y)})." for y in left.futureRel ])) 
+        prog.append(''.join([f"futureRel(r,{repr(y)})." for y in right.futureRel ])) 
         return prog 
 
 
