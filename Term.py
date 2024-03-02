@@ -60,7 +60,8 @@ class App(Term,TermAttr,Substitutable,Normalizable):
 
 
     def __repr__(self) -> str:
-        return f"{self.func.name}{ ("" if not self.args else '(' + ','.join(repr(a) for a in self.args) + ')')}"
+        val =  "" if not self.args else '(' + ','.join(repr(a) for a in self.args) + ')'
+        return f"{self.func.name}{val}"
 
 # Abstract Methods
 
@@ -181,7 +182,9 @@ class Var(VarObjects):
 
 # Class Specific Methods 
 
-    def strAlt(self,tag:str)-> str: return f"{self.vc}"+f"[{ tag if self.idx== 0 else tag+"+"+str(self.idx)}]"
+    def strAlt(self,tag:str)-> str: 
+        val =  tag if self.idx== 0 else tag+"+"+str(self.idx)
+        return f"{self.vc}"+f"[{val}]"
 
 class Rec(VarObjects):
 
