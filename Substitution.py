@@ -3,11 +3,8 @@ from collections.abc import Iterable
 class Substitution(Substitutable): 
     def __init__(self,pairs=[]): 
         self.mapping = {}
-        for x,y in pairs:
-            if isinstance(x,Domainable) and isinstance(y,Substitutable): 
-                self.mapping[x]=y
-            else:
-                raise ValueError()
+        self.addBindings(pairs)
+        
 # Magic Methods
 
     def __add__(self,b):
@@ -19,37 +16,36 @@ class Substitution(Substitutable):
 
     def __call__(self, *args):
         x= args[0] if len(args)==1 else None
-        if isinstance(x,Substitutable): 
-            return x.handleSubstitution(self)
-        elif isinstance(x,Iterable): 
-            return x.__class__.__call__(map(self,x))
-        else: 
-            raise ValueError()
+        if isinstance(x,Substitutable): return x.handleSubstitution(self)
+        elif isinstance(x,Iterable): return x.__class__.__call__(map(self,x))
+        else: raise ValueError()
+
     def __iter__(self):
         return self.mapping.keys().__iter__()
+
     def __next__(self):
         return self.mapping.keys().__next__()
+
 # Abstract Methods
     def handleSubstitution(self,sigma):
         ret = Substitution()
-        for x in self.domain():
-            ret.addBinding(x,sigma(self.mapping[x]))
-        for x in sigma.domain()-self.domain():
-            ret.addBinding(x,sigma.mapping[x])
+        for x in self.domain(): ret.addBinding(x,sigma(self.mapping[x]))
+        for x in sigma.domain()-self.domain(): ret.addBinding(x,sigma.mapping[x])
         return ret
 
 # Class Specific Methods
 
     def addBinding(self,x,t):
-        if not isinstance(x,Domainable) or x==t or x in self.mapping.keys(): 
-            return False
-        else:
-            self.mapping[x] = t
-            return True
+        if not (isinstance(x,Domainable) or isinstance(t,Substitutable) or x!=t): raise ValueError
+        self.mapping[x] = t
+    
+    def addBindings(self,pairs):
+        for x in pairs: 
+            assert len(x) == 2
+            self.addBinding(*x) 
 
     def removebinding(self,x):
-        if x in self.mapping.keys():
-            del  self.mapping[x]
+        if x in self.mapping.keys(): del  self.mapping[x]
 
     def domain(self):
         return self.mapping.keys()
@@ -60,7 +56,6 @@ class Substitution(Substitutable):
     def restriction(self,f):
         sigma = Substitution()
         for x in self.mapping:
-            if f(x): 
-                sigma.addBinding(x,self.mapping[x])
+            if f(x): sigma.addBinding(x,self.mapping[x])
         return sigma
 

@@ -17,7 +17,16 @@ class SchematicUnification:
         self.SchematicSubstitution = schSubs
         self.subproblems = SubProblemStack(UnifProb,schSubs,debug)
         self.irrelevant = UnificationProblem()
+    
+    def current(self):
+        return self.subproblems.Top()
 
+    def update_subproblems(self,sub):
+        if self.debug>3: self.print_sub_results(sub)
+        self.subproblems += SubProblem(sub)
+        self.foSolver.clear()
+        self.count+=1
+    
     def unif(self,start_time=-1):
         self.foSolver.setTime(start_time)
         self.SchSolver.setTime(start_time)
@@ -25,25 +34,21 @@ class SchematicUnification:
         try:
             while self.subproblems.Open(start_time):
                 self.update_subproblems(self.unify_current())
-                self.update()
         except Solver.CycleException as e:
             return e.handle(self.debug)
         except Solver.ClashExeption as e:  
             return e.handle(self.debug) 
         except StabilityViolationFinalException as e:
             return e.handle(self.debug,start_time)
-
         if self.debug >1: self.print_final_results()  
         if self.debug in [0,1]: print(f"\t unifiable --- {round(time.time() - start_time,3)} seconds ---")
-
         #self.unifier()
         return True , (time.time() - start_time)
 
     def unify_current(self):
-
 ## incrementing the current subproblem for the computation of the next subproblem
         current = self.current().subproblem.increment(self.SchematicSubstitution)
-        if self.debug>2: self.print_current_problem(self.current())
+        if self.debug>2: self.print_current_problem()
         if self.debug>4: print("Theta Unification:\n")
         store, context = self.SchSolver.unify(current)
         if self.debug>3: print("First-order Syntactic Unification:\n")
@@ -67,17 +72,8 @@ class SchematicUnification:
         self.current().IrrSub = finRes
         return  store
 
-    def current(self):
-        return self.subproblems.Top()
+   
 
-    def update(self):
-        self.foSolver.clear()
-        self.count+=1
-
-    def update_subproblems(self,sub):
-        if self.debug>3: self.print_sub_results(sub)
-        self.subproblems += SubProblem(sub)
-    
     def cycle(self,contextVars,cleaned_context):
         contextIdxs = [x.idx for x in contextVars]
         maxContextVar =  max(contextIdxs) if contextIdxs != [] else 0
@@ -192,8 +188,8 @@ class SchematicUnification:
         print()
         print("==========================================================")
 
-    def print_current_problem(self,current):
+    def print_current_problem(self):
         print("Problem "+str(self.count)+":")
-        print(current)
+        print(self.current())
         print("==========================================================")
         print()

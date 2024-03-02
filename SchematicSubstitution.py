@@ -67,7 +67,12 @@ class SchematicSubstitution(Substitution):
     def associated_classes(self,name):
         return self.associated_classes_max[name].keys()
 
-    def isFutureRelevant(self,r,x):
+    def isFutureRelevantTo(self,Recs:set[Rec],x:Var):
+        for r in Recs:
+            if self.isFutureRelevant(r,x): return True
+        return False
+
+    def isFutureRelevant(self,r:Rec,x:Var):
         if x.vc in self.associated_classes_min[r.vc].keys():
             minval = self.associated_classes_min[r.vc][x.vc]
             if r.idx +minval <= x.idx: return True

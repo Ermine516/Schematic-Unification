@@ -54,6 +54,7 @@ class SubProblemStack:
         self.stabBound = max(stabProb.depth(),stabProb.maxIdx())
         self.stabRatio = -1
         self.subproblems = [SubProblem(unifProb)]
+        self.subproblems[0].NormalSimplifiedForm= self.subproblems[0].simplify(self.dom).normalization() 
         self.iterstate =0
     def __len__(self):
         return len(self.subproblems)-1
@@ -75,9 +76,8 @@ class SubProblemStack:
         return ret
     
     def futureOverlap(self,current,other):
-        for r in current.recs:
-            for vc,m in other.futurevars.items():
-                if self.dom.isFutureRelevant(r,m): return True
+        for _,m in other.futurevars.items():
+            if self.dom.isFutureRelevantTo(current.recs,m): return True
         return False
     def Top(self):
         return  self.subproblems[-1]
@@ -92,7 +92,8 @@ class SubProblemStack:
             return e.handle(self.debug,start_time,self.Top())
     def close(self):
         left = self.Top()
-        leftNorm = left.simplify(self.dom).normalization()
+        leftNorm = left.NormalSimplifiedForm if  left.NormalSimplifiedForm else left.simplify(self.dom).normalization()
+        left.NormalSimplifiedForm = leftNorm
         left.stab = len(leftNorm.subproblem.vos(Var))
         for x in reversed(range(0, len(self))):
             right = self.subproblems[x]
@@ -148,8 +149,6 @@ class SubProblemStack:
             else: return None
         prog = []
         prog.extend(SubProblemStack.clingoBasic) 
-        varsLeft =set()
-        varsRight=set()
         recs =set(left.recs)
         recs.update(right.recs)
         tops =set()
