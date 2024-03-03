@@ -1,3 +1,4 @@
+from __future__ import annotations
 from Term import *
 from UnificationProblem import *
 from Substitution import *
@@ -5,16 +6,18 @@ from functools import reduce as fold
 from UnionFindNode import UnionFindNode 
 
 class SubProblem:
-   
-    def __len__(self):
-        return len(self.subproblem)
-    def __str__(self):
-        return str(self.subproblem) 
-    def __iter__(self):
-        return self.subproblem.__iter__()
-    
-    def __next__(self):
-        return self.subproblem.__next__()
+    subproblem : UnificationProblem
+    vars : set[Var]
+    recs : set[Rec]
+    futurevars : set[Var]
+    stab : int
+    futureRel : set[Var]
+    cyclic : int
+    eqSubstitution : Substitution
+    simplified : SubProblem
+    IrrSub : Substitution
+    NormalSimplifiedForm : SubProblem
+
     def __init__(self,subproblem,futureRel=set()):
         self.subproblem = subproblem
         self.vars =set()
@@ -27,7 +30,6 @@ class SubProblem:
         self.simplified= None
         self.IrrSub =Substitution()
         self.NormalSimplifiedForm = None
-
 # Collects all variables and recursion occurring in the problem
         for uEq in subproblem:
             for t in uEq:
@@ -37,7 +39,17 @@ class SubProblem:
         for x in self.vars:
             if not x.vc in self.futurevars.keys(): self.futurevars[x.vc] =  x 
             if x.idx >self.futurevars[x.vc].idx: self.futurevars[x.vc] =  x 
-   
+
+    def __len__(self):
+        return len(self.subproblem)
+    def __str__(self):
+        return str(self.subproblem) 
+    def __iter__(self):
+        return self.subproblem.__iter__()
+    
+    def __next__(self):
+        return self.subproblem.__next__()
+
     def normalization(self):
         return SubProblem(self.subproblem.normalize(),futureRel=self.futureRel)
     

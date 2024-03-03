@@ -2,10 +2,7 @@ from sys import argv
 from SchematicUnification import *
 from SchematicSubstitution import *
 from UnificationProblem import *
-
-from functools import reduce
 from TermParser import *
-from os import listdir
 from Test import *
 import argparse
 import time
