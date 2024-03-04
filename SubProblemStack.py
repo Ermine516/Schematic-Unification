@@ -81,7 +81,7 @@ class SubProblemStack:
         self.subproblems = [SubProblem(unifProb)]
 # We precompute the simplified normal form of the problem and its stability value.
         self.subproblems[0].NormalSimplifiedForm= self.subproblems[0].simplify(self.dom).normalization() 
-        self.subproblems[0].stab = len(self.subproblems[0].NormalSimplifiedForm .subproblem.vos(Var))
+        self.subproblems[0].stab = len(self.subproblems[0].simplified.subproblem.vos(Var))+ len(self.subproblems[0].simplified.subproblem.vos(Rec))
 # Used for interating through the subproblem
         self.iterstate =0
     
@@ -115,7 +115,7 @@ class SubProblemStack:
     def close(self):
         left = self.Top()
         left.NormalSimplifiedForm = left.simplify(self.dom).normalization()
-        left.stab = len(left.NormalSimplifiedForm .subproblem.vos(Var))
+        left.stab = len(left.NormalSimplifiedForm.subproblem.vos(Var))+len(left.NormalSimplifiedForm.subproblem.vos(Rec))
 # We only check subsumption once we reach the stability bound
         if len(self) < self.stabBound: return False
         for x in reversed(range(0, len(self))):

@@ -2,6 +2,8 @@ from Term import *
 from Namer import Namer
 from Substitution import * 
 from collections import defaultdict
+
+from UnificationProblem import UnificationProblem
 class InvalidFunctionException(Exception):
         def __init__(self,f):
             self.func = f
@@ -107,51 +109,51 @@ class SchematicSubstitution(Substitution):
             if term.vc != sym: self.mutual[sym].add(term)
             self.recursions[sym].add(term.idx)
                 
-    def makePrimitive(self):
-        def makeSub(sym,idx,names,t):
-            mu =Substitution()
-            if type(t) is App:
-                nArgs = []
-                for x in t.args:
-                    tt, mu2 =  makeSub(sym,idx,names,x)
-                    nArgs.append(tt)
-                    mu = mu(mu2)
-                return t.func(*tuple(nArgs)),mu 
-            elif type(t) is Var:
-                idxMod = t.idx % idx
-                nName = names[t.vc][idxMod]
-                nidx = 0 if idxMod == 0 else t.idx/idxMod
-                nVar = Var(nName,idxMod)
-                return nVar, mu+(t,Var(nName,idxMod))
-            elif type(t) is Rec:
-                return Rec(t.vc,1), mu
+    def makePrimitive(self, uProb:UnificationProblem = None):
         if not self.uniform: return None, None
         if self.primitive: return self, Substitution()
-
-        prim = SchematicSubstitution()
-        symIdxPairs = [(x,list(y)[0])for x,y in self.recursions.items() if list(y)[0]> 1]
-        symIdxPairs.sort(key=lambda x: x[1],reverse=True)
-        nonPrimSyms,_ = zip(*symIdxPairs)
         nu = Substitution()
+# set of recursions defined in the schematic substitution which have index greater than 1
+        symIdxPairs = [(x,list(y)[0])for x,y in self.recursions.items() if list(y)[0]> 1]
+# We sort the resursions, reverse sort, by there in index
+        symIdxPairs.sort(key=lambda x: x[1],reverse=True)
+# We ground the schematic substitution at zero to extra the terms defining the step case 
         self.clear()
         self.ground(0)
-        pairs = {x:self.mapping[Rec(x,0)].instance() for x in self.symbols if not x in nonPrimSyms}
+        symtoTerm = { x.vc:y.instance() for x,y in self.mapping.items()}
+        TermsToConsider = set(symtoTerm.values()).union(uProb.vos(Var) if uProb else set())
+# This function collects all variables with the given variable class in a set of terms
+        varsByVC = lambda vc,terms: [ x for x in reduce(lambda acc,val: acc.union(val),map(lambda t: t.vos(Var),terms)) if x.vc == vc]
+
+#We loop through the non-primitive definition is the schematic substitution
         for i in range(0,len(symIdxPairs)):
             sym,idx = symIdxPairs[i]
-            assLCls = self.associated_classes_min[sym].keys()
-            symTerm = nu(self.mapping[Rec(sym,0)])
-            assLClsNames = {}
+# We apply the the current renaming to the term associated with sym in the current schematic substitution
+            symTerm = symtoTerm[sym]
+            assLCls = set([x.vc  for x in symTerm.vos(Var)])
+            mu = Substitution()
             for x in assLCls:
+                byModIdx = {i:set() for i in range(0,idx)}
                 mNames=Namer(x+sym)
-                names = {0:x}
-                for y in range(1,idx):
-                    names[y]=mNames.current_name()
+                occOfx = varsByVC(x,TermsToConsider)
+# we collect the variables which are indexed the same mod idx
+                for inst in occOfx: byModIdx[inst.idx % idx].add(inst)
+# we collect the variables which are indexed the same mod idx
+               
+# We construct the substitution for the current symbol sym
+                for i,v in byModIdx.items():
+                    newName = mNames.current_name()
+                    for inst in v:
+                       mu += (inst,Var(newName,(inst.idx-i)//idx))
                     mNames.next_name()
-                assLClsNames[x]= names
-            nt, mu = makeSub(sym,idx,assLClsNames,symTerm)
-            nu = nu(mu)
-            pairs[sym] = nt
-        pairs = [(x,nu(y)) for x,y in pairs.items()]
-        for x,y in pairs:
-            prim.add_interpreted(x,y)
+# We construct the substitution reducing the current recursion to 1
+            recSwap = Substitution() + ( Rec(sym,idx),Rec(sym,1))
+# We apply both to the term found in the mapping.
+            symtoTerm = {x:mu(y) for x,y in symtoTerm.items()}
+            symtoTerm[sym] = recSwap(symtoTerm[sym])
+# We compose the two substitutions
+            nu = nu(mu)        
+# construct the new primitive substitution
+        prim = SchematicSubstitution()
+        for x,y in symtoTerm.items(): prim.add_interpreted(x,y)
         return prim, nu

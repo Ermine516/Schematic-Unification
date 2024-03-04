@@ -202,7 +202,7 @@ class UnificationProblem(Substitutable,TermAttr,Normalizable):
         if schSubs.uniform == False: raise nonUniforminputException()
         if schSubs.primitive == False:
             if(self.debug>0): print("Schematic substitution is Uniform but Non-Primitive.")
-            schSubs,self.PrimMap = schSubs.makePrimitive()
+            schSubs,self.PrimMap = schSubs.makePrimitive(self)
             if(self.debug>0): print("Mapping used to transform Schematic substitution:\n","\t",self.PrimMap)
             self.prob = set([UnificationEquation(self.PrimMap(x),self.PrimMap(y)) for x,y in self])
         return schSubs
