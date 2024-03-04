@@ -20,7 +20,6 @@ def parsing_CMD():
         parser.add_argument('procedure', choices=['Test','Unif','Unfold'], help='Currently either Test or Unification')
         parser.add_argument('-f',metavar="file.su", default="",help='The unification problem to Solve. Igored when in Test mode')
         parser.add_argument('-uf',metavar="i", default="0",help='number of times to unfold problem before unifying. Usinged with Unfold mode')
-
         parser.add_argument('--debug',metavar="int",type=int,choices=[-1,0,1,2,3,4,5,6],default=1,help='Debug level: 0 is the lowest and 3 is the highest.')
 
         return  parser.parse_args()
