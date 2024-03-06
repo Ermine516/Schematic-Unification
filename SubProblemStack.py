@@ -118,15 +118,15 @@ class SubProblemStack:
         left.stab = len(left.NormalSimplifiedForm.subproblem.vos(Var))+len(left.NormalSimplifiedForm.subproblem.vos(Rec))
 # We only check subsumption once we reach the stability bound
         if len(self) < self.stabBound: return False
+# Checks if we reached the stability bound and computes the stability ratio
+        if len(self) >= self.stabBound and self.stabRatio==-1: self.stabRatio = max((p.stab for p in self.subproblems))
+# If we over shoot the stability ratio raise an exception
+        if left.stab > self.stabRatio and len(self) >= self.stabBound: raise StabilityViolationException(left.NormalSimplifiedForm ,self,left.stab) 
         for x in reversed(range(0, len(self))):
             right = self.subproblems[x]
 # checks if there are variables in right which are future relevent to left
             if  [ m for _,m in right.futurevars.items() if self.dom.isFutureRelevantTo(left.recs,m)] != []: continue
             if self.debug > 5: print(f"computing Subsumption between {x} and {len(self)}\n")
-# Checks if we reached the stability bound and computes the stability ratio
-            if len(self) >= self.stabBound and self.stabRatio==-1: self.stabRatio = max((p.stab for p in self.subproblems))
-# If we over shoot the stability ratio raise an exception
-            if left.stab > self.stabRatio and len(self) >= self.stabBound: raise StabilityViolationException(left.NormalSimplifiedForm ,self,left.stab) 
 # Constructs the ASP program computing mappings    
             prog = self.computerEncoding(left.NormalSimplifiedForm ,right.NormalSimplifiedForm)
             if not prog: continue

@@ -36,7 +36,8 @@ class Substitution(Substitutable):
 # Class Specific Methods
 
     def addBinding(self,x,t):
-        if not (isinstance(x,Domainable) or isinstance(t,Substitutable) or x!=t): raise ValueError
+        if not (isinstance(x,Domainable) and isinstance(t,Substitutable) ): raise ValueError
+        if x==t: return None
         self.mapping[x] = t
     
     def addBindings(self,pairs):

@@ -1,3 +1,4 @@
+from enum import Enum
 from SchematicSubstitution import SchematicSubstitution
 from Term import *
 from Solver import Solver
@@ -9,20 +10,44 @@ class Configuration:
         store       : UProb
         storeLen    : int
         recursions  : set[Rec]
-        seen        : set[Tuple[Term,Term,Term]]
         updates     : set[UEq]
-        toRemove    : set[UEq]
+
+        isTerm = lambda a: not  issubclass(type(a),VarObjects) 
+        isVarRec =lambda a:   issubclass(type(a),VarObjects) 
+        isRec = lambda a: type(a) is Rec
+        isVar = lambda a: type(a) is Var
+        stored = lambda config,a: a in config.store
         
-        def __init__(self,active:UProb,schSubs:SchematicSubstitution):
-            self.active = active # Set of unification problems
+        clash = lambda uEq:  Configuration.isTerm(uEq[0]) and Configuration.isTerm(uEq[1])  and uEq[0].func != uEq[1].func
+        cycle_F =  lambda config: lambda uEq: Configuration.isVar(uEq[0]) and (config.isFutureRelevantto(uEq[0],uEq[1]))
+        orient1 = lambda uEq: Configuration.isVarRec(uEq[1]) and Configuration.isTerm(uEq[0])
+        decomposition = lambda uEq:  Configuration.isTerm(uEq[0]) and Configuration.isTerm(uEq[1]) and uEq[0].func == uEq[1].func
+        orient2 = lambda config: lambda uEq: Configuration.isVarRec(uEq[0]) and Configuration.isVarRec(uEq[1]) and not uEq.flip() in config.orient2check 
+        store_T_R= lambda config, uEq: Configuration.isVar(uEq[0]) and config.isRelevant(uEq)
+        store_T_D= lambda  uEq:  Configuration.isRec(uEq[0]) and  not Configuration.isVar(uEq[1]) 
+        store_T_F= lambda config, uEq:   Configuration.isVar(uEq[0])  and config.isFutureRelevant(uEq[0]) 
+        store = lambda config, uEq:  Configuration.store_T_R(config,uEq) or Configuration.store_T_D(uEq) or Configuration.store_T_F(config,uEq) 
+
+        def __init__(self,active:UProb,schSubs:SchematicSubstitution,start_time = -1):
+            self.active = active.prob # Set of unification problems
             self.store = UProb() # Set of variable on left unification problems
-            self.storeLen = len(self.store) # using as part of the termination condition
             self.store.schSubs = schSubs # The schematic substitution associated with the unfication problem
             self.recursions = set() # used for checking if a variable is future relevant
-            self.seen = set() # holds seen unification equations
-            self.updates=set() # used to update the store and active set after a pass through the loop
-            self.toRemove=set() # used to update the store and active set after a pass through the loop
-
+            self.updates=active.prob # used to update the store and active set after a pass through the loop
+            self.relvars = set()
+            self.vardict ={}
+            self.transPairs=set()
+            self.orient1set = []
+            self.orient2set = []
+            self.orient2check =set()
+            self.decompositionset = []
+            self.storeSet = []
+            self.start_time=start_time
+            if clashable:= list(filter( Configuration.clash,self.active)): raise Solver.ClashExeption(clashable[0][0].func.name,clashable[0],self.start_time)
+# Optimization 
+            if cycleFable := list(filter(Configuration.cycle_F(self),self.active)): raise Solver.CycleException(cycleFable[0],f"{str(cycleFable[0][0])} is future relevant to {str(cycleFable[0][1])}",self.start_time)
+            self.processState()
+            
 # magic methods
         def __str__(self) -> str:
             exset = str([x.name for x in  self.store.schSubs.symbols])
@@ -32,47 +57,47 @@ class Configuration:
             for x,y in self.store: ret+=f"\t {x} =?= {y}\n"
             return ret
 
- # Class Specific Methods        
-        def addSeen(self, *args:Tuple[UEq])-> None:
-            if len(args)==1:
-                self.seen.add((args[0][0],args[0][0],args[0][1]))
-            elif len(args)==2:
-                self.seen.add((args[0][0],args[0][1],args[1][1]))
-                self.seen.add((args[0][0],args[1][1],args[0][1]))
-
-        def final(self)-> bool:
-            if len(self.seen)!=0 and len(self.updates)+len(self.toRemove)== 0 and self.storeLen==len(self.store): return False
-            self.active = set(filter(lambda a: not a in self.toRemove, self.active))
-            self.active.update(self.updates)
+ # Class Specific Methods 
+        def processState(self):
+            if clashable:= list(filter( Configuration.clash,self.updates)): raise Solver.ClashExeption(clashable[0][0].func.name,clashable[0],self.start_time)
+# Optimization 
+            if cycleFable := list(filter(Configuration.cycle_F(self),self.updates)): raise Solver.CycleException(cycleFable[0],f"{str(cycleFable[0][0])} is future relevant to {str(cycleFable[0][1])}",self.start_time)
+            self.orient1set.extend(list(filter(Configuration.orient1, self.updates)))
+            self.decompositionset.extend(list(filter(Configuration.decomposition, self.updates)))
+            self.orient2set.extend(list(filter(Configuration.orient2(self), self.updates)))
+            newvars =[]
+            for uEq in filter(lambda uEq:  issubclass(type(uEq[0]),VarObjects) ,self.updates):
+                if not uEq[0] in self.vardict.keys(): self.vardict[uEq[0]] = set()
+                if not uEq in self.vardict[uEq[0]]:
+                    self.vardict[uEq[0]].add(uEq)
+                    newvars.append(uEq[0])
+            for v in newvars: 
+                for uEq1 in self.vardict[v]:
+                    self.transPairs.update([(uEq1,uEq2) for uEq2 in self.vardict[v] if uEq1 != uEq2 ])            
             self.updates=set()
-            self.toRemove=set()
-            self.storeLen=len(self.store)
-            return True
-            
-        def updateStore(self,binding:UEq) -> None:
-            self.recursions.update(binding.vos(Rec))
-            self.store+binding
 
+        def update(self):
+            self.updates = set(filter(lambda uEq: not uEq.reflexive() ,self.updates))
+            self.active.update(self.updates)
+            self.processState()
+        
+        def final(self)-> bool:
+            return  False if len(self.transPairs)==0 and len(self.orient1set)==0 and len(self.orient2set)==0 and len(self.decompositionset)==0 else True
+        
+        def finalStore(self)-> bool:
+            self.storeSet = set(filter(lambda a: Configuration.store(self,a), self.active))
+            return False if len(self.storeSet)==0 else True
+            
+        
         def isFutureRelevant(self,x:Term) -> bool:
-            for r in self.recursions:
-                 if self.store.schSubs.isFutureRelevant(r,x): return True
-            return False
+            return True if [ r for r in self.recursions if self.store.schSubs.isFutureRelevant(r,x)] else False
         
         def isFutureRelevantto(self,x:VarObjects,t:Term) -> bool:
-            for r in t.vos(Rec):
-                if self.store.schSubs.isFutureRelevant(r,x): return True
-            return False
-        
-        def existsseen(self,uEq:UEq) -> bool:
-            for p1,p2,p3 in self.seen:
-                if  p1==uEq[0] and p2==uEq[0] and p3==uEq[1]: return True
-            return False
-        
+            return True if [ r for r in t.vos(Rec) if self.store.schSubs.isFutureRelevant(r,x)] else False
+    
         def isRelevant(self,a:UEq) -> bool:
-            for b in self.store:
-                if b[1].occurs(a[0]) or b[0]==a[1] or (not type(a[0]) is Rec and a[0]==b[0]):
-                    return True
-            return False
+            return True if [v for v in self.relvars if a[0]==v] else False 
+
         
 class ThetaUnification(Solver):
 
@@ -80,73 +105,45 @@ class ThetaUnification(Solver):
         super().__init__(SchematicSubstitution,debug,start_time)
         
     def unify(self,problem:UProb)-> Tuple[UProb,UProb,set[Rec]]:
-        
-        config = Configuration(problem,self.SchematicSubstitution)  
-#Checks useful for the unification procedure
-        isTerm = lambda a: not  issubclass(type(a),VarObjects) 
-        isVarRec =lambda a:   issubclass(type(a),VarObjects) 
-        isRec = lambda a: type(a) is Rec
-        isVar = lambda a: type(a) is Var
-        unseen = lambda a: not a in config.seen
-        stored = lambda a: a in config.store
-        anno = lambda a: (uEq[0],uEq[0],uEq[1])
-#Conditions for rules
-        delete = lambda uEq: isTerm(uEq[0]) and config.existsseen(uEq)
-        decomposition = lambda uEq:  unseen(anno(uEq)) and isTerm(uEq[0]) and isTerm(uEq[1]) and uEq[0].func.name == uEq[1].func.name
-        orient1 = lambda uEq: not uEq.reflexive() and (isVarRec(uEq[1]) and isTerm(uEq[0])) and unseen(anno(uEq))
-        orient2 = lambda uEq: not uEq.reflexive() and isVarRec(uEq[0]) and isVarRec(uEq[1]) and not uEq.flip() in config.active
-        clash = lambda uEq:  isTerm(uEq[0]) and isTerm(uEq[1])  and uEq[0].func.name != uEq[1].func.name
-        store_T_R= lambda uEq: not uEq.reflexive() and isVar(uEq[0]) and  not stored(uEq) and config.isRelevant(uEq)
-        store_T_D= lambda uEq: isRec(uEq[0]) and  not  isVar(uEq[1]) and not uEq.reflexive() and not stored(uEq)
-        store_T_F= lambda uEq: not uEq.reflexive() and isVar(uEq[0]) and  not stored(uEq) and config.isFutureRelevant(uEq[0])
-        transitivity = lambda uEq: lambda a: isVar(uEq[0]) and isVar(a[0]) and uEq[0]!= a[1] and not uEq.reflexive() and a[0]==uEq[0] and uEq[1]!=a[1] and unseen((uEq[0],a[1],uEq[1])) and unseen((uEq[0],uEq[1],a[1])) 
-        cycle_F =  lambda uEq: isVar(uEq[0]) and (config.isFutureRelevantto(uEq[0],uEq[1]))
-# Checks whether the given binding 'a' is relevent to the binding stored in the configuration
+        config = Configuration(problem,self.SchematicSubstitution,self.start_time)  
         while config.final():
-            for uEq in config.active:
-                if delete(uEq):
-                    if self.debug>4: print(f"\t Delete: {str(uEq)}")
-                    config.toRemove.add(uEq.duplicate())
-                elif decomposition(uEq):
-                    if self.debug>4: print(f"\t Decomposition: {str(uEq)}")
-                    config.addSeen(uEq)
-                    config.addSeen(uEq.flip())
-                    config.toRemove.add(uEq.duplicate())
-                    config.updates.update([UEq(x1,y1) for x1,y1 in list(zip(uEq[0].args,uEq[1].args)) if unseen((x1,x1,y1))])
-                elif orient1(uEq):
-                    if self.debug>4: print(f"\t Orient 1: {str(uEq)}")
-                    config.addSeen(uEq)
-                    config.toRemove.add(uEq.duplicate())
-                    config.updates.add(uEq.flip())
-                elif orient2(uEq):
-                    if self.debug>4: print(f"\t Orient 2: {str(uEq)}")
-                    config.addSeen(uEq)
-                    config.addSeen(uEq.flip())
-                    config.updates.add(uEq.flip())
-                elif uEq.reflexive():
-                    if self.debug>4: print(f"\t Reflexivity: {str(uEq)}")
-                    config.addSeen(uEq)
-                    config.toRemove.add(uEq)
-                elif clash(uEq):
-                    raise Solver.ClashExeption(uEq[0].func.name,uEq,self.start_time)
-                elif cycle_F(uEq):
-                    raise Solver.CycleException(uEq,f"{str(uEq[0])} is future relevant to {str(uEq[1])}",self.start_time)
-                elif store_T_R(uEq):
-                    if self.debug>4: print(f"\t Store-Θ-R: {str(uEq)}")
-                    config.updateStore(uEq)
-                    config.addSeen(uEq)
-                elif store_T_D(uEq):
-                    if self.debug>4: print(f"\t Store-Θ-D: {str(uEq)}")
-                    config.updateStore(uEq)
-                    config.addSeen(uEq)
-                elif  store_T_F(uEq):
-                    if self.debug>4: print(f"\t Store-Θ-F: {str(uEq)}")
-                    config.updateStore(uEq)
-                    config.addSeen(uEq)
-                else:
-                        for uEq2 in list(filter(transitivity(uEq),config.active)):   
-                            if self.debug>4: print(f"\t Transitivity: {str(uEq)} and {str(uEq2)}")
-                            config.addSeen(uEq,uEq2)
-                            config.updates.add(UEq(uEq[1],uEq2[1]))
+            while config.orient1set !=  []:
+                uEq =config.orient1set.pop()
+                try:
+                    config.active.remove(uEq)
+                except KeyError as e:
+                    continue               
+                config.updates.add(uEq.flip())            
+                if self.debug>4: print(f"\t Orient 1: {str(uEq)}")
+            config.update()
+            while config.decompositionset != []:
+                uEq =config.decompositionset.pop()
+                try:
+                    config.active.remove(uEq)
+                except KeyError as e:
+                    continue
+                config.updates.update([UEq(x1,y1) for x1,y1 in list(zip(uEq[0].args,uEq[1].args)) ]) 
+                if self.debug>4: print(f"\t Decomposition: {str(uEq)}")
+            config.update()
+            while config.orient2set != []:
+                uEq =config.orient2set.pop()
+                config.orient2check.update([uEq,uEq.flip])
+                config.updates.add(uEq.flip())
+                if self.debug>4: print(f"\t Orient 2: {str(uEq)}")
+            config.update()
+            while config.transPairs != set():
+                uEq1,uEq2 = config.transPairs.pop()
+                config.updates.add(UEq(uEq1[1],uEq2[1]))
+                if self.debug>4: print(f"\t Transitivity: {str(uEq1)} and {str(uEq2)}")
+            config.update()
+
+        while config.finalStore(): 
+                while config.storeSet:
+                    uEq =config.storeSet.pop()
+                    config.recursions.update(uEq.vos(Rec))
+                    config.active.remove(uEq)
+                    config.store+= uEq
+                    config.relvars.update(uEq.vos(VarObjects))
+                    if self.debug>4: print(f"\t Store-Θ: {str(uEq)}")
         if self.debug>4: print()
-        return config.store, config.active
+        return config.store, config.active.union(config.store.prob)
