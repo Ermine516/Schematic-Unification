@@ -1,3 +1,4 @@
+from collections import defaultdict
 from enum import Enum
 from SchematicSubstitution import SchematicSubstitution
 from Term import *
@@ -35,7 +36,7 @@ class Configuration:
             self.recursions = set() # used for checking if a variable is future relevant
             self.updates=active.prob # used to update the store and active set after a pass through the loop
             self.relvars = set()
-            self.vardict ={}
+            self.vardict =defaultdict(set)
             self.transPairs=set()
             self.orient1set = []
             self.orient2set = []
@@ -65,17 +66,11 @@ class Configuration:
             self.orient1set.extend(list(filter(Configuration.orient1, self.updates)))
             self.decompositionset.extend(list(filter(Configuration.decomposition, self.updates)))
             self.orient2set.extend(list(filter(Configuration.orient2(self), self.updates)))
-            newvars =[]
-            for uEq in filter(lambda uEq:  issubclass(type(uEq[0]),VarObjects) ,self.updates):
-                if not uEq[0] in self.vardict.keys(): self.vardict[uEq[0]] = set()
-                if not uEq in self.vardict[uEq[0]]:
+            for uEq in filter(lambda uEq:  issubclass(type(uEq[0]),VarObjects) and not uEq in self.vardict[uEq[0]] ,self.updates):
+                    self.transPairs.update([(uEq,uEq1) for uEq1 in self.vardict[uEq[0]] ])                     
                     self.vardict[uEq[0]].add(uEq)
-                    newvars.append(uEq[0])
-            for v in newvars: 
-                for uEq1 in self.vardict[v]:
-                    self.transPairs.update([(uEq1,uEq2) for uEq2 in self.vardict[v] if uEq1 != uEq2 ])            
             self.updates=set()
-
+                    
         def update(self):
             self.updates = set(filter(lambda uEq: not uEq.reflexive() ,self.updates))
             self.active.update(self.updates)

@@ -1,4 +1,4 @@
 ## A linear Primitive example that does not unify
 
-f(X[100],L_0) =?= f(a,f(Y[0],Y[0]))
+f(X[50],L_0) =?= f(a,f(Y[0],Y[0]))
 L <== f(f(X[0],X[0]),L_1)
